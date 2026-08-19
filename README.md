@@ -44,6 +44,8 @@ PCI bus driver from config space at enumeration time.
 | MPS, MRRS | Anything requiring a live register read |
 | Driver binding and version, device status / problem code | |
 | NUMA node, AER capability presence | |
+| **Bus topology** (parent/child, via `DEVPKEY_Device_Parent`) | |
+| Every field above, queryable **per attribute** | |
 
 If you ask for something in the right column, it says so and exits 2 rather
 than quietly doing less than you asked:
@@ -177,16 +179,47 @@ Get-PciDevice | Where-Object { $_.LinkStateReported -and $_.LinkWidth -lt $_.Max
 Get-PciDevice | ConvertTo-PciAttributeRecord | Export-Csv machine-a.csv
 ```
 
-## Two design decisions worth knowing
+## Three design decisions worth knowing
+
+All three come from the same instinct: **a wrong answer that looks right is
+worse than an obvious failure.**
 
 **"Not reported" is never rendered as zero.** Root ports and chipset devices
 legitimately expose no link state. Rendering that as `x0` would look like a dead
 link, so absent stays `$null` and prints as *"not reported by this device"*.
-There is a test for it.
+`Present` is a real field in attribute output for the same reason. There is a
+test for it.
 
 **A filter that matches nothing exits non-zero.** `lspci -d 11f8:` finding no
 card must not look like success — that is the difference between "the card is
-not there" and "the command worked".
+not there" and "the command worked". Same for an attribute query with no rows.
+
+**Slot filters normalise both sides.** `-s 1:` used to return *nothing* while
+`-s 01:` matched the same device, because the comparison was against the raw
+string. A filter that silently finds nothing when the device is right in front
+of you is the worst failure this tool could have, so padded, unpadded and
+domain-qualified forms are all normalised before comparison — and pinned by
+tests asserting `1:` and `01:` agree.
+
+---
+
+## Topology
+
+`-t` builds a real tree from `DEVPKEY_Device_Parent`, so an endpoint appears
+under the root port that carries it, with its link state inline — which is
+where a downtrained device becomes obvious:
+
+```
+-00:06.0  11th Gen Core Processor PCIe Controller
+ \-01:00.0  Gold P31/BC711/PC711 NVMe Solid State Drive  (8GT/s x4)
+-00:1d.0  Tiger Lake-LP PCI Express Root Port #9
+ \-f3:00.0  GA107M [GeForce RTX 3050 Ti Mobile]  (8GT/s x4)
+```
+
+A device whose parent is not itself a PCI device becomes a root rather than
+being dropped. An incomplete tree that *looks* complete is worse than an
+obviously ragged one, and a test asserts every enumerated device appears
+exactly once.
 
 ---
 
