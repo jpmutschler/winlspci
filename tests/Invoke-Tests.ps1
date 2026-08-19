@@ -1,0 +1,298 @@
+<#
+.SYNOPSIS
+  winlspci test suite. No Pester required.
+
+.DESCRIPTION
+  Deliberately dependency-free. The Pester that ships on a stock Windows box is
+  3.4.0, whose syntax ("Should Be") is incompatible with Pester 5's
+  ("Should -Be"), so a Pester suite would work on the author's machine and fail
+  on a colleague's. A portable diagnostic tool should not need an install
+  before its own tests will run.
+
+  Tests that need real hardware assert on SHAPE rather than on values, since
+  the PCI inventory differs on every machine. Where a test genuinely needs a
+  specific device it is skipped with a reason rather than failed.
+
+.EXAMPLE
+  powershell -ExecutionPolicy Bypass -File tests\Invoke-Tests.ps1
+#>
+[CmdletBinding()]
+param([switch]$Quiet)
+
+$ErrorActionPreference = 'Stop'
+$script:Pass = 0
+$script:Fail = 0
+$script:Skip = 0
+$script:Failures = @()
+
+function It {
+    param([string]$Name, [scriptblock]$Body)
+    try {
+        & $Body
+        $script:Pass++
+        if (-not $Quiet) { Write-Host "  PASS  $Name" -ForegroundColor Green }
+    } catch {
+        if ($_.Exception.Message -like 'SKIP:*') {
+            $script:Skip++
+            Write-Host "  SKIP  $Name -- $($_.Exception.Message -replace '^SKIP:\s*','')" -ForegroundColor Yellow
+        } else {
+            $script:Fail++
+            $script:Failures += "$Name : $($_.Exception.Message)"
+            Write-Host "  FAIL  $Name" -ForegroundColor Red
+            Write-Host "        $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+}
+
+function Assert-True {
+    param($Condition, [string]$Message = 'expected true')
+    if (-not $Condition) { throw $Message }
+}
+
+function Assert-Equal {
+    param($Expected, $Actual, [string]$Message = '')
+    if ($Expected -ne $Actual) {
+        throw "expected '$Expected', got '$Actual'. $Message"
+    }
+}
+
+function Skip-Test { param([string]$Why) throw "SKIP: $Why" }
+
+$root = Split-Path $PSScriptRoot -Parent
+Import-Module (Join-Path $root 'winlspci.psd1') -Force
+
+Write-Host "`nwinlspci tests" -ForegroundColor Cyan
+Write-Host "PowerShell $($PSVersionTable.PSVersion)`n"
+
+# ------------------------------------------------------------ ID database
+
+Write-Host 'PCI ID database'
+
+It 'parses the bundled pci.ids' {
+    Import-PciIds -Force
+    Assert-True ((Get-PciVendorName '8086') -ne $null) 'Intel 8086 should resolve'
+}
+
+It 'resolves a known vendor' {
+    Assert-Equal 'Intel Corporation' (Get-PciVendorName '8086')
+}
+
+It 'resolves a known device' {
+    $n = Get-PciDeviceName '1c5c' '174a'
+    Assert-True ($n -like '*NVMe*') "expected an NVMe name, got '$n'"
+}
+
+It 'resolves the Microchip/Microsemi switch vendor' {
+    # 11f8 still reads "PMC-Sierra" in the upstream database: Microsemi bought
+    # PMC-Sierra, Microchip bought Microsemi, and the ID never changed. Worth
+    # a test so nobody at a bench concludes the card is the wrong part.
+    $n = Get-PciVendorName '11f8'
+    Assert-True ($n -like '*PMC-Sierra*' -or $n -like '*Microsemi*' -or $n -like '*Microchip*') `
+        "11f8 resolved to '$n'"
+}
+
+It 'is case-insensitive on vendor ids' {
+    Assert-Equal (Get-PciVendorName '8086') (Get-PciVendorName '8086'.ToUpper())
+}
+
+It 'returns null for an unknown vendor rather than inventing a name' {
+    Assert-Equal $null (Get-PciVendorName 'zzzz')
+}
+
+It 'decodes device classes' {
+    Assert-Equal 'Non-Volatile memory controller' (Get-PciClassName -BaseClass 1 -SubClass 8)
+}
+
+It 'falls back to the base class when the subclass is unknown' {
+    $n = Get-PciClassName -BaseClass 1 -SubClass 254
+    Assert-True ($n -like '*storage*' -or $n -like '*Mass storage*') "got '$n'"
+}
+
+# ------------------------------------------------------------ enumeration
+
+Write-Host "`nEnumeration"
+
+$devices = @(Get-PciDevice)
+
+It 'enumerates at least one PCI device' {
+    Assert-True ($devices.Count -gt 0) 'no PCI devices found at all'
+}
+
+It 'every device has a 4-hex-digit vendor and device id' {
+    foreach ($d in $devices) {
+        Assert-True ($d.VendorId -match '^[0-9a-f]{4}$') "bad VendorId '$($d.VendorId)'"
+        Assert-True ($d.DeviceId -match '^[0-9a-f]{4}$') "bad DeviceId '$($d.DeviceId)'"
+    }
+}
+
+It 'every device has a parseable bus:device.function' {
+    foreach ($d in $devices) {
+        Assert-True ($d.Slot -match '^[0-9a-f]{2}:[0-9a-f]{2}\.\d$') `
+            "device $($d.VendorId):$($d.DeviceId) has slot '$($d.Slot)'"
+    }
+}
+
+It 'never reports a link width without reporting link state' {
+    # The distinction this tool exists to preserve: "not reported" and
+    # "reported as zero" must not collapse. A device with no link state must
+    # carry nulls, not zeros, or a reader sees a dead link that is not there.
+    foreach ($d in $devices) {
+        if (-not $d.LinkStateReported) {
+            Assert-True ($null -eq $d.LinkSpeed) `
+                "$($d.Slot) has no link state but LinkSpeed='$($d.LinkSpeed)'"
+        }
+    }
+}
+
+It 'reports link state for at least one endpoint' {
+    $linked = @($devices | Where-Object { $_.LinkStateReported })
+    if ($linked.Count -eq 0) { Skip-Test 'no device on this machine reports link state' }
+    Assert-True ($linked[0].LinkWidth -gt 0) 'a reported link should have non-zero width'
+}
+
+It 'negotiated link speed never exceeds the maximum' {
+    foreach ($d in $devices) {
+        if ($d.LinkStateReported -and $null -ne $d.MaxLinkSpeedRaw) {
+            Assert-True ($d.LinkSpeedRaw -le $d.MaxLinkSpeedRaw) `
+                "$($d.Slot) negotiated $($d.LinkSpeedRaw) above max $($d.MaxLinkSpeedRaw)"
+        }
+    }
+}
+
+# ------------------------------------------------------------ filtering
+
+Write-Host "`nFiltering"
+
+It 'filters by vendor' {
+    $ven = $devices[0].VendorId
+    $filtered = @(Get-PciDevice -Device "${ven}:")
+    Assert-True ($filtered.Count -gt 0) "vendor filter '$ven' matched nothing"
+    foreach ($d in $filtered) { Assert-Equal $ven $d.VendorId }
+}
+
+It 'filters by vendor and device' {
+    $d0 = $devices[0]
+    $filtered = @(Get-PciDevice -Device "$($d0.VendorId):$($d0.DeviceId)")
+    Assert-True ($filtered.Count -gt 0) 'vendor:device filter matched nothing'
+    foreach ($d in $filtered) { Assert-Equal $d0.DeviceId $d.DeviceId }
+}
+
+It 'a vendor that is not present matches nothing' {
+    Assert-Equal 0 @(Get-PciDevice -Device 'ffff:').Count
+}
+
+It 'tolerates a 0x-prefixed vendor id' {
+    $ven = $devices[0].VendorId
+    Assert-True (@(Get-PciDevice -Device "0x${ven}:").Count -gt 0) '0x prefix not stripped'
+}
+
+# ------------------------------------------------------------ formatting
+
+Write-Host "`nFormatting"
+
+It 'renders one line per device at verbosity 0' {
+    $out = @($devices[0] | Format-Lspci -Verbosity 0 -Numeric 0)
+    Assert-Equal 1 $out.Count
+}
+
+It 'includes hex ids in -nn mode and not in name mode' {
+    $withIds = @($devices[0] | Format-Lspci -Verbosity 0 -Numeric 2) -join "`n"
+    $namesOnly = @($devices[0] | Format-Lspci -Verbosity 0 -Numeric 0) -join "`n"
+    # .Contains, not -like: '[' is a wildcard metacharacter in PowerShell, so
+    # "*[8086:*" is an invalid pattern rather than a literal match.
+    $needle = "[$($devices[0].VendorId):$($devices[0].DeviceId)]"
+    Assert-True ($withIds.Contains($needle)) "nn mode should carry '$needle'"
+    Assert-True (-not $namesOnly.Contains($needle)) 'name mode should not carry ids'
+}
+
+It 'flags a downtrained link in words, not just numbers' {
+    $fake = [pscustomobject]@{
+        Slot = '01:00.0'; VendorId = 'dead'; DeviceId = 'beef'; SubsystemId = $null
+        Revision = '00'; VendorName = 'Test'; DeviceName = 'Widget'
+        ClassCode = '0108'; ClassName = 'NVMe'; ProgIf = 2; FriendlyName = 'Widget'
+        Driver = 'x'; DriverVersion = '1'; Status = 'OK'; Problem = 0; NumaNode = $null
+        LinkStateReported = $true
+        LinkSpeed = '8GT/s'; LinkSpeedRaw = 3; LinkWidth = 2
+        MaxLinkSpeed = '16GT/s'; MaxLinkSpeedRaw = 4; MaxLinkWidth = 4
+        MaxPayloadSize = $null; MaxPayloadSizeSupported = $null; MaxReadRequestSize = $null
+        AerCapable = $false; InstanceId = 'X'; Present = $true
+    }
+    $out = @($fake | Format-Lspci -Verbosity 1) -join "`n"
+    Assert-True ($out -like '*DOWNTRAINED (speed)*') "speed downtrain not flagged: $out"
+    Assert-True ($out -like '*DOWNTRAINED (width)*') "width downtrain not flagged: $out"
+}
+
+It 'says so plainly when link state is absent' {
+    $fake = [pscustomobject]@{
+        Slot = '00:00.0'; VendorId = 'dead'; DeviceId = 'beef'; SubsystemId = $null
+        Revision = $null; VendorName = 'T'; DeviceName = 'W'; ClassCode = '0600'
+        ClassName = 'Host bridge'; ProgIf = 0; FriendlyName = 'W'; Driver = $null
+        DriverVersion = $null; Status = 'OK'; Problem = 0; NumaNode = $null
+        LinkStateReported = $false
+        LinkSpeed = $null; LinkSpeedRaw = $null; LinkWidth = $null
+        MaxLinkSpeed = $null; MaxLinkSpeedRaw = $null; MaxLinkWidth = $null
+        MaxPayloadSize = $null; MaxPayloadSizeSupported = $null; MaxReadRequestSize = $null
+        AerCapable = $false; InstanceId = 'X'; Present = $true
+    }
+    $out = @($fake | Format-Lspci -Verbosity 1) -join "`n"
+    Assert-True ($out -like '*not reported*') "expected an explicit 'not reported': $out"
+    Assert-True ($out -notlike '*x0*') "must not render an absent width as x0: $out"
+}
+
+# ------------------------------------------------------------ CLI contract
+
+Write-Host "`nCLI"
+
+$cli = Join-Path $root 'bin\lspci.ps1'
+
+It 'a vendor filter matching nothing exits non-zero' {
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $cli -d 'ffff:' | Out-Null
+    Assert-Equal 1 $LASTEXITCODE 'a filter that matches nothing must not look like success'
+}
+
+It 'an unfiltered listing exits zero' {
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $cli | Out-Null
+    Assert-Equal 0 $LASTEXITCODE
+}
+
+It 'refuses -x rather than silently ignoring it' {
+    # Config-space dumps are impossible without a kernel driver. A tool that
+    # quietly does less than asked is worse than one that says it cannot.
+    # No '--' separator: PowerShell has no such convention and treats it as an
+    # empty parameter name. -x falls through to ValueFromRemainingArguments.
+    # Windows PowerShell 5.1 wraps ANY stderr from a native executable in a
+    # NativeCommandError, whatever redirection you use -- and this suite runs
+    # with $ErrorActionPreference = 'Stop', so the child's (correct, expected)
+    # refusal message would terminate the test. Relax the preference just for
+    # this call; the exit code is what is under test, not the stream.
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $cli -x 2>&1 | Out-Null
+        $code = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+    Assert-Equal 2 $code 'expected exit 2 for an impossible request'
+}
+
+It 'emits valid JSON' {
+    $json = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $cli -Json | Out-String
+    $obj = $json | ConvertFrom-Json
+    Assert-True ($obj.count -gt 0) 'JSON should report devices'
+    Assert-True ($obj.note -like '*configuration-space*') 'JSON should state its limits'
+}
+
+# ------------------------------------------------------------ summary
+
+Write-Host ''
+Write-Host ('-' * 60)
+$colour = 'Green'
+if ($script:Fail -gt 0) { $colour = 'Red' }
+Write-Host "$($script:Pass) passed, $($script:Fail) failed, $($script:Skip) skipped" -ForegroundColor $colour
+if ($script:Fail -gt 0) {
+    Write-Host ''
+    foreach ($f in $script:Failures) { Write-Host "  $f" -ForegroundColor Red }
+    exit 1
+}
+exit 0
