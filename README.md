@@ -15,7 +15,12 @@ PS> lspci -d 1c5c: -vv
         DevCtl: MPS 256 bytes (max 512), MaxReadReq 512 bytes
         Capabilities: AER present
 
-PS> lspci -Downtrained          # the question you actually opened lspci to answer
+PS> lspci -t
+-00:1d.0  Tiger Lake-LP PCI Express Root Port #9
+ \-f3:00.0  GA107M [GeForce RTX 3050 Ti Mobile]  (8GT/s x4)
+
+PS> lspci -Attribute LinkSpeed -Match '16GT|32GT|64GT'   # no grep needed
+PS> lspci -Downtrained                                   # anything below its max
 ```
 
 ---
@@ -85,34 +90,92 @@ tells you what is in the machine should not need an install before it runs.
 
 ---
 
-## Usage
+## Flags — what maps, what doesn't
 
-| Flag | Meaning |
+Measured against Linux `lspci`, not aspirational.
+
+### Implemented
+
+| lspci | winlspci | Notes |
+|---|---|---|
+| `-s <bdf>` | `-s` | Prefix match. Accepts padded, unpadded and domain-qualified: `1:`, `01:`, `1:0.0`, `0000:01:00.0` |
+| `-d <ven>:<dev>:<class>` | `-d` | Any field may be empty: `-d 11f8:`, `-d :174a`, `-d ::0108` |
+| `-t` | `-t` | Real topology, from `DEVPKEY_Device_Parent`. Shows link state inline |
+| `-v` | `-v` | Link state (current **and** max), driver, status |
+| `-vv` | `-vv` | Adds MPS, MRRS, subsystem, NUMA, AER presence |
+| `-vvv` | `-vvv` | Every property Windows exposes, **plus an explicit list of what is missing** |
+| `-n` | `-n` | IDs only |
+| `-nn` | `-nn` | Names and IDs |
+| `-D` | `-Domain` | Not `-D`: PowerShell matches aliases **case-insensitively**, so `-D` collides with `-d`. Always `0000` — Windows' PnP data carries no segment number |
+| `-k` | shown by `-v` | Driver and version are part of `-v` |
+
+### Deliberately refused
+
+| lspci | Why |
 |---|---|
-| `-d <ven>:<dev>:<class>` | Filter. Any field may be empty: `-d 11f8:`, `-d :174a`, `-d ::0108` |
-| `-s <bdf>` | Slot filter, matched as a prefix: `-s 01:`, `-s 01:00.0` |
-| `-v` / `-vv` | Add link state and driver / add MPS, MRRS, subsystem, NUMA |
-| `-n` / `-nn` | IDs only / names *and* IDs |
-| `-Json` | Structured output |
-| `-Downtrained` | Only devices running below their maximum speed or width |
-| `-Version` | Module version and the bundled `pci.ids` date |
+| `-x`, `-xxx`, `-xxxx` | Config-space dumps. **Impossible without a signed kernel-mode driver.** Exits 2 with an explanation rather than pretending |
 
-### PowerShell as a first-class interface
+### Not implemented (possible, just not built)
 
-The reason to have this rather than a straight port: the objects are real.
+`-b` (bus-centric view) · `-m`/`-mm` (machine-readable — `-Json`/`-Csv`/`-Attribute` supersede it) · `-p` (custom ID file) · `-i` (custom pci.ids path) · `-q`/`-Q` (online ID lookup) · `-A`/`-H1`/`-H2`/`-F` (access methods — meaningless here) · `-M` (bus mapping)
 
-```powershell
-# Every device not running at full width
-Get-PciDevice | Where-Object { $_.LinkWidth -lt $_.MaxLinkWidth }
+### Beyond lspci
 
-# Group the machine by vendor
-Get-PciDevice | Group-Object VendorName | Sort-Object Count -Descending
-
-# Feed a report
-Get-PciDevice -Device '11f8:' | ConvertTo-Json -Depth 5 > switch-inventory.json
-```
+| Flag | Why it exists |
+|---|---|
+| `-Attribute <names>` | Query at the attribute level. Wildcards: `-Attribute Link*` |
+| `-Match <regex>` | Filter by **value** |
+| `-PresentOnly` | Drop attributes the device does not report |
+| `-ListAttributes` | Discover what is queryable |
+| `-Json` / `-Csv` | Structured output |
+| `-Downtrained` | Only devices below their maximum speed or width |
 
 ---
+
+## Attribute-level queries — the grep replacement
+
+Windows has no `grep`, so `lspci -vv | grep LnkSta` has no equivalent. Rather
+than bolt on text search, the data is serialised to one record per attribute:
+
+```
+PS> lspci -Attribute Link* -s 01:00.0 -PresentOnly
+
+Slot    VendorId DeviceId Attribute         Value Present
+----    -------- -------- ---------         ----- -------
+01:00.0 1c5c     174a     LinkStateReported  True    True
+01:00.0 1c5c     174a     LinkSpeed         8GT/s    True
+01:00.0 1c5c     174a     LinkWidth             4    True
+```
+
+Filter by value, which is what you would have piped to grep:
+
+```powershell
+lspci -Attribute LinkSpeed -Match '16GT|32GT|64GT'   # every Gen4+ link
+lspci -Attribute Driver -Match 'stornvme'            # everything on one driver
+lspci -Attribute '*' -Match '11f8' -Csv              # every field mentioning the vendor
+lspci -ListAttributes                                # what can I ask for?
+```
+
+Three properties that make this better than text search:
+
+- **`Present` is a field.** Absent and zero never collapse. A root port that
+  reports no link width is not a device running at x0, and a text pipeline
+  cannot tell those apart.
+- **Values keep their types.** `LinkWidth` is an integer, so `-lt 4` works;
+  grep would have you comparing strings.
+- **An attribute query matching nothing exits 1**, so a script can tell "no
+  match" from "it worked".
+
+Composable, since these are real objects:
+
+```powershell
+# every device not running at full width, as a table
+Get-PciDevice | Where-Object { $_.LinkStateReported -and $_.LinkWidth -lt $_.MaxLinkWidth } |
+    Select-Object Slot, DeviceName, LinkWidth, MaxLinkWidth
+
+# diff two machines
+Get-PciDevice | ConvertTo-PciAttributeRecord | Export-Csv machine-a.csv
+```
 
 ## Two design decisions worth knowing
 

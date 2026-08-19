@@ -167,6 +167,7 @@ $script:WantedKeys = @(
     'DEVPKEY_Device_Address'
     'DEVPKEY_Device_DriverVersion'
     'DEVPKEY_Device_Numa_Node'
+    'DEVPKEY_Device_Parent'
     'DEVPKEY_PciDevice_BaseClass'
     'DEVPKEY_PciDevice_SubClass'
     'DEVPKEY_PciDevice_ProgIf'
@@ -270,6 +271,59 @@ function ConvertTo-Bdf {
 }
 
 
+
+function ConvertTo-NormalisedSlot {
+    <#
+    .SYNOPSIS
+      Zero-pad an lspci-style slot so '1:0.0' and '01:00.0' compare equal.
+    .DESCRIPTION
+      lspci accepts unpadded bus and device numbers. Ours previously compared
+      the raw string, so `-s 1:` silently matched NOTHING while `-s 01:`
+      matched -- a filter that returns an empty list when the device is right
+      there is exactly the kind of quiet wrong answer worth failing loudly on.
+    #>
+    param([string]$Slot)
+    if (-not $Slot) { return '' }
+
+    $func = $null
+    $rest = $Slot
+    if ($rest.Contains('.')) {
+        $bits = $rest.Split('.')
+        $rest = $bits[0]
+        if ($bits.Length -gt 1 -and $bits[1] -ne '') { $func = $bits[1] }
+    }
+
+    $parts = $rest.Split(':')
+    # Accept an optional leading domain (lspci -D prints 0000:01:00.0).
+    if ($parts.Length -ge 3) { $parts = $parts[1..($parts.Length - 1)] }
+
+    $out = ''
+    if ($parts.Length -ge 1 -and $parts[0] -ne '') {
+        $out = '{0:x2}' -f [Convert]::ToInt32($parts[0], 16)
+    }
+    if ($parts.Length -ge 2) {
+        $out += ':'
+        if ($parts[1] -ne '') { $out += '{0:x2}' -f [Convert]::ToInt32($parts[1], 16) }
+    } elseif ($Slot.Contains(':')) {
+        $out += ':'
+    }
+    if ($null -ne $func) { $out += ".$func" }
+    return $out
+}
+
+
+function Test-SlotMatch {
+    <#
+    .SYNOPSIS
+      Does a device's slot match an lspci-style -s filter (prefix semantics)?
+    #>
+    param([string]$Bdf, [string]$Filter)
+    $norm = ConvertTo-NormalisedSlot $Filter
+    if (-not $norm) { return $true }
+    return $Bdf.StartsWith($norm)
+}
+
+
 function Get-PciDevice {
     <#
     .SYNOPSIS
@@ -358,9 +412,7 @@ function Get-PciDevice {
             (Get-BagValue $bag 'DEVPKEY_Device_BusNumber') `
             (Get-BagValue $bag 'DEVPKEY_Device_Address')
 
-        if ($Slot -and -not $bdf.StartsWith($Slot.TrimStart('0'))) {
-            if (-not $bdf.StartsWith($Slot)) { continue }
-        }
+        if ($Slot -and -not (Test-SlotMatch $bdf $Slot)) { continue }
 
         $curSpeed = Get-BagValue $bag 'DEVPKEY_PciDevice_CurrentLinkSpeed'
         $curWidth = Get-BagValue $bag 'DEVPKEY_PciDevice_CurrentLinkWidth'
@@ -432,6 +484,7 @@ function Get-PciDevice {
             MaxPayloadSizeSupported = $mpsMaxBytes
             MaxReadRequestSize = $mrrs
             AerCapable       = Get-BagValue $bag 'DEVPKEY_PciDevice_AERCapabilityPresent'
+            ParentInstanceId = Get-BagValue $bag 'DEVPKEY_Device_Parent'
             InstanceId       = $instanceId
             Present          = ($pnp.Status -ne 'Unknown')
         }
@@ -511,7 +564,25 @@ function Format-Lspci {
                 Write-Output $status
             }
 
-            if ($Verbosity -ge 2) {
+            if ($Verbosity -ge 3) {
+                # lspci -vvv decodes every capability structure. We cannot --
+                # that needs config space. So -vvv here means "every field
+                # Windows will give us", plus an explicit statement of what is
+                # missing, rather than a quieter version of -vv that leaves the
+                # reader assuming they saw everything.
+                Write-Output '        -- all available properties --'
+                foreach ($prop in ($d.PSObject.Properties | Sort-Object Name)) {
+                    if ($prop.Name -eq 'PSTypeName') { continue }
+                    $v = $prop.Value
+                    if ($null -eq $v -or "$v" -eq '') { $v = '<not reported>' }
+                    Write-Output ("        {0,-24} {1}" -f $prop.Name, $v)
+                }
+                Write-Output ('        NOT AVAILABLE without a kernel driver: ' +
+                              'config-space dump, capability walk, ASPM, ' +
+                              'AER registers, LTR, DPC')
+            }
+
+            if ($Verbosity -eq 2) {
                 if ($d.SubsystemId) { Write-Output "        Subsystem: $($d.SubsystemId)" }
                 if ($null -ne $d.MaxPayloadSize) {
                     Write-Output ("        DevCtl: MPS {0} bytes (max {1}), MaxReadReq {2} bytes" -f `
@@ -523,6 +594,166 @@ function Format-Lspci {
             }
         }
     }
+}
+
+
+
+function Format-PciTree {
+    <#
+    .SYNOPSIS
+      Bus topology, in the shape of `lspci -t`.
+
+    .DESCRIPTION
+      Built from DEVPKEY_Device_Parent, which Windows populates with the
+      upstream bridge's instance id. Devices whose parent is not itself a PCI
+      device (root complexes, and anything whose parent left the tree) become
+      roots, so nothing is silently dropped -- an incomplete tree that LOOKS
+      complete is worse than an obviously ragged one.
+
+    .PARAMETER Numeric
+      0 names, 1 ids, 2 both -- as Format-Lspci.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$Devices,
+        [int]$Numeric = 0
+    )
+
+    $byId = @{}
+    foreach ($d in $Devices) { $byId[$d.InstanceId] = $d }
+
+    $children = @{}
+    $roots = @()
+    foreach ($d in $Devices) {
+        $parent = $d.ParentInstanceId
+        if ($parent -and $byId.ContainsKey($parent)) {
+            if (-not $children.ContainsKey($parent)) { $children[$parent] = @() }
+            $children[$parent] += $d
+        } else {
+            $roots += $d
+        }
+    }
+
+    function Write-Node {
+        param($Node, [string]$Prefix, [bool]$IsLast, [bool]$IsRoot)
+
+        $label = $Node.Slot
+        if ($Numeric -eq 1) {
+            $label += " [$($Node.VendorId):$($Node.DeviceId)]"
+        } else {
+            $desc = $Node.DeviceName
+            if (-not $desc) { $desc = $Node.FriendlyName }
+            if (-not $desc) { $desc = $Node.ClassName }
+            if ($Numeric -eq 2) { $desc = "$desc [$($Node.VendorId):$($Node.DeviceId)]" }
+            $label += "  $desc"
+        }
+        if ($Node.LinkStateReported) {
+            $label += "  ($($Node.LinkSpeed) x$($Node.LinkWidth))"
+        }
+
+        if ($IsRoot) {
+            Write-Output "-$label"
+            $childPrefix = ' '
+        } else {
+            if ($IsLast) { $branch = '\-' } else { $branch = '+-' }
+            Write-Output "$Prefix$branch$label"
+            if ($IsLast) { $childPrefix = "$Prefix  " } else { $childPrefix = "$Prefix| " }
+        }
+
+        $kids = @()
+        if ($children.ContainsKey($Node.InstanceId)) {
+            $kids = @($children[$Node.InstanceId] | Sort-Object Slot)
+        }
+        for ($i = 0; $i -lt $kids.Count; $i++) {
+            Write-Node $kids[$i] $childPrefix ($i -eq $kids.Count - 1) $false
+        }
+    }
+
+    foreach ($r in ($roots | Sort-Object Slot)) {
+        Write-Node $r '' $true $true
+    }
+}
+
+
+function ConvertTo-PciAttributeRecord {
+    <#
+    .SYNOPSIS
+      Flatten a device to one record per ATTRIBUTE.
+
+    .DESCRIPTION
+      Turns a device object into rows of
+      (Slot, Attribute, Value, Present) so a query can be written against
+      attributes rather than devices -- grouping, diffing two machines, or
+      asking "which devices report MaxPayloadSize at all".
+
+      `Present` is a first-class field because absent and zero must not
+      collapse: a root port that reports no link width is not a device running
+      at x0, and any tool that renders both as 0 will eventually send someone
+      to debug a link that is fine.
+
+    .EXAMPLE
+      Get-PciDevice | ConvertTo-PciAttributeRecord |
+        Where-Object { $_.Attribute -eq 'LinkWidth' -and $_.Present }
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, ValueFromPipeline)]$Device,
+        [string[]]$Attribute,
+        [string]$Match,
+        [switch]$PresentOnly
+    )
+    process {
+        foreach ($d in @($Device)) {
+            foreach ($prop in $d.PSObject.Properties) {
+                if ($prop.Name -eq 'PSTypeName') { continue }
+
+                # Wildcards, not exact names. Without grep on the far side, the
+                # filtering has to happen here -- `-Attribute Link*` is the
+                # thing you would otherwise pipe through `grep -i link`.
+                if ($Attribute) {
+                    $nameHit = $false
+                    foreach ($pattern in $Attribute) {
+                        if ($prop.Name -like $pattern) { $nameHit = $true; break }
+                    }
+                    if (-not $nameHit) { continue }
+                }
+
+                $value = $prop.Value
+                $isPresent = ($null -ne $value -and "$value" -ne '')
+                if ($PresentOnly -and -not $isPresent) { continue }
+                if ($Match -and "$value" -notmatch $Match) { continue }
+                [pscustomobject]@{
+                    Slot      = $d.Slot
+                    VendorId  = $d.VendorId
+                    DeviceId  = $d.DeviceId
+                    Attribute = $prop.Name
+                    Value     = $value
+                    Present   = $isPresent
+                }
+            }
+        }
+    }
+}
+
+
+
+function Get-PciAttributeName {
+    <#
+    .SYNOPSIS
+      Every attribute name a device object carries.
+    .DESCRIPTION
+      Exists because attribute-level queries are only usable if you can find
+      out what the attributes are called. `lspci -ListAttributes` is the
+      discovery step that `grep` would otherwise stand in for.
+    #>
+    [CmdletBinding()]
+    param()
+    $sample = Get-PciDevice | Select-Object -First 1
+    if (-not $sample) { return @() }
+    $sample.PSObject.Properties |
+        Where-Object { $_.Name -ne 'PSTypeName' } |
+        ForEach-Object { $_.Name } |
+        Sort-Object
 }
 
 
@@ -553,5 +784,6 @@ function Update-PciIds {
 }
 
 
-Export-ModuleMember -Function Get-PciDevice, Format-Lspci, Update-PciIds,
+Export-ModuleMember -Function Get-PciDevice, Format-Lspci, Format-PciTree,
+    ConvertTo-PciAttributeRecord, Get-PciAttributeName, Update-PciIds,
     Get-PciVendorName, Get-PciDeviceName, Get-PciClassName, Import-PciIds

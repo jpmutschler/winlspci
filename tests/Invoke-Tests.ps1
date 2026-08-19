@@ -283,6 +283,128 @@ It 'emits valid JSON' {
     Assert-True ($obj.note -like '*configuration-space*') 'JSON should state its limits'
 }
 
+
+# ------------------------------------------------------------ slot filter
+
+Write-Host "`nSlot filter (-s)"
+
+It 'accepts an unpadded bus number, as lspci does' {
+    # This returned NOTHING before normalisation: `-s 1:` missed while
+    # `-s 01:` matched. A filter that silently finds nothing when the device is
+    # right there is the worst kind of wrong answer.
+    $padded = @(Get-PciDevice -Slot '01:').Count
+    $unpadded = @(Get-PciDevice -Slot '1:').Count
+    Assert-Equal $padded $unpadded 'padded and unpadded must agree'
+}
+
+It 'accepts a full unpadded bus:device.function' {
+    $a = @(Get-PciDevice -Slot '01:00.0').Count
+    $b = @(Get-PciDevice -Slot '1:0.0').Count
+    Assert-Equal $a $b
+}
+
+It 'accepts a domain-qualified slot' {
+    $a = @(Get-PciDevice -Slot '01:00.0').Count
+    $b = @(Get-PciDevice -Slot '0000:01:00.0').Count
+    Assert-Equal $a $b
+}
+
+It 'a bus with nothing on it matches nothing' {
+    Assert-Equal 0 @(Get-PciDevice -Slot 'ee:').Count
+}
+
+# ------------------------------------------------------------ tree
+
+Write-Host "`nTree (-t)"
+
+It 'renders a tree with every device present exactly once' {
+    $all = @(Get-PciDevice)
+    $lines = @(Format-PciTree -Devices $all -Numeric 1)
+    Assert-Equal $all.Count $lines.Count `
+        'a device must appear exactly once -- no drops, no duplicates'
+}
+
+It 'nests an endpoint under its root port' {
+    $all = @(Get-PciDevice)
+    $child = $all | Where-Object { $_.ParentInstanceId -and
+        ($all.InstanceId -contains $_.ParentInstanceId) } | Select-Object -First 1
+    if (-not $child) { Skip-Test 'no parent/child pair on this machine' }
+    $lines = @(Format-PciTree -Devices $all -Numeric 1)
+    $line = $lines | Where-Object { $_ -like "*$($child.Slot)*" } | Select-Object -First 1
+    # A root is rendered as "-<slot>"; a child is indented and branched. Test
+    # the property (indented, not at column 0) rather than an exact glyph set,
+    # so the assertion survives a cosmetic change to the branch characters.
+    Assert-True (-not $line.StartsWith('-')) "child line is not indented: '$line'"
+    Assert-True ($line.Contains('-' + $child.Slot)) "child slot missing: '$line'"
+}
+
+It 'a device whose parent is absent still appears, as a root' {
+    # Nothing may be silently dropped: an incomplete tree that looks complete
+    # is worse than an obviously ragged one.
+    $orphan = [pscustomobject]@{
+        Slot='09:00.0'; VendorId='dead'; DeviceId='beef'; DeviceName='Orphan'
+        FriendlyName='Orphan'; ClassName='Test'; LinkStateReported=$false
+        LinkSpeed=$null; LinkWidth=$null; InstanceId='X'; ParentInstanceId='NOT-PRESENT'
+    }
+    $lines = @(Format-PciTree -Devices @($orphan) -Numeric 1)
+    Assert-Equal 1 $lines.Count
+    Assert-True ($lines[0] -like '*09:00.0*') 'orphan must still be listed'
+}
+
+# ------------------------------------------------------ attribute queries
+
+Write-Host "`nAttribute serialisation"
+
+It 'flattens a device to one record per attribute' {
+    $d = @(Get-PciDevice)[0]
+    $records = @($d | ConvertTo-PciAttributeRecord)
+    Assert-True ($records.Count -gt 10) "expected many attributes, got $($records.Count)"
+    foreach ($r in $records) { Assert-Equal $d.Slot $r.Slot }
+}
+
+It 'filters attributes by wildcard' {
+    $d = @(Get-PciDevice)[0]
+    $records = @($d | ConvertTo-PciAttributeRecord -Attribute 'Link*')
+    Assert-True ($records.Count -gt 0) 'Link* matched nothing'
+    foreach ($r in $records) { Assert-True ($r.Attribute -like 'Link*') $r.Attribute }
+}
+
+It 'filters by value, standing in for grep' {
+    $records = @(Get-PciDevice | ConvertTo-PciAttributeRecord -Attribute 'VendorId' -Match '^8086$')
+    Assert-True ($records.Count -gt 0) 'no Intel devices matched'
+    foreach ($r in $records) { Assert-Equal '8086' $r.Value }
+}
+
+It 'marks absent attributes as not present rather than dropping them' {
+    $records = @(Get-PciDevice | ConvertTo-PciAttributeRecord -Attribute 'MaxPayloadSize')
+    $absent = @($records | Where-Object { -not $_.Present })
+    if ($absent.Count -eq 0) { Skip-Test 'every device reports MaxPayloadSize here' }
+    foreach ($r in $absent) {
+        Assert-True ($null -eq $r.Value -or "$($r.Value)" -eq '') `
+            "marked absent but carries '$($r.Value)'"
+    }
+}
+
+It 'PresentOnly drops the absent ones' {
+    $all = @(Get-PciDevice | ConvertTo-PciAttributeRecord -Attribute 'MaxPayloadSize')
+    $present = @(Get-PciDevice | ConvertTo-PciAttributeRecord -Attribute 'MaxPayloadSize' -PresentOnly)
+    Assert-True ($present.Count -le $all.Count) 'PresentOnly must not add rows'
+    foreach ($r in $present) { Assert-True $r.Present }
+}
+
+It 'lists the attribute names so a query can be written' {
+    $names = @(Get-PciAttributeName)
+    Assert-True ($names -contains 'LinkSpeed') 'LinkSpeed should be discoverable'
+    Assert-True ($names -contains 'Slot')
+}
+
+It 'an attribute query matching nothing exits non-zero' {
+    $cliPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'bin\lspci.ps1'
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $cliPath `
+        -Attribute 'VendorId' -Match 'zzzznope' | Out-Null
+    Assert-Equal 1 $LASTEXITCODE
+}
+
 # ------------------------------------------------------------ summary
 
 Write-Host ''

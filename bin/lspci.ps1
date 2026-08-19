@@ -22,6 +22,17 @@ param(
     [Alias('s')][string]$Slot = '',
     [Alias('v')][switch]$Verbose1,
     [Alias('vv')][switch]$Verbose2,
+    [Alias('vvv')][switch]$Verbose3,
+    [Alias('t')][switch]$Tree,
+    # No 'D' alias: PowerShell matches parameter aliases CASE-INSENSITIVELY,
+    # so -D would collide with -d (Device) and the script refuses to load.
+    # lspci's -D therefore has to be spelled -Domain here.
+    [switch]$Domain,
+    [string[]]$Attribute,
+    [string]$Match,
+    [switch]$PresentOnly,
+    [switch]$ListAttributes,
+    [switch]$Csv,
     [Alias('n')][switch]$Numeric,
     [Alias('nn')][switch]$NumericAndNames,
     [Alias('k')][switch]$ShowDriver,
@@ -70,6 +81,7 @@ if ($Rest) {
 $verbosity = 0
 if ($Verbose1) { $verbosity = 1 }
 if ($Verbose2) { $verbosity = 2 }
+if ($Verbose3) { $verbosity = 3 }
 
 $numericMode = 0
 if ($Numeric) { $numericMode = 1 }
@@ -87,6 +99,46 @@ if ($Downtrained) {
             ($null -ne $_.MaxLinkWidth -and $_.LinkWidth -lt $_.MaxLinkWidth)
         )
     })
+}
+
+if ($Domain) {
+    # lspci -D prints the domain. Windows' PnP data carries no PCI segment
+    # number, so this is 0000 for every device -- correct on a single-segment
+    # machine, and stated rather than silently assumed.
+    $devices = @($devices | ForEach-Object {
+        $_ | Add-Member -NotePropertyName Slot -NotePropertyValue "0000:$($_.Slot)" -Force -PassThru
+    })
+}
+
+if ($ListAttributes) {
+    Get-PciAttributeName
+    exit 0
+}
+
+if ($Attribute -or $Match -or $PresentOnly) {
+    $args2 = @{}
+    if ($Attribute)   { $args2['Attribute'] = $Attribute }
+    if ($Match)       { $args2['Match'] = $Match }
+    if ($PresentOnly) { $args2['PresentOnly'] = $true }
+    $records = @($devices | ConvertTo-PciAttributeRecord @args2)
+
+    if ($Json) {
+        $records | ConvertTo-Json -Depth 5
+    } elseif ($Csv) {
+        $records | ConvertTo-Csv -NoTypeInformation
+    } else {
+        $records | Format-Table -AutoSize
+    }
+    # An attribute query that matches nothing is a real answer, but it must not
+    # be mistaken for success by a script.
+    if ($records.Count -eq 0) { exit 1 }
+    exit 0
+}
+
+if ($Tree) {
+    Format-PciTree -Devices $devices -Numeric $numericMode
+    if (($Device -or $Slot) -and $devices.Count -eq 0) { exit 1 }
+    exit 0
 }
 
 if ($Json) {
