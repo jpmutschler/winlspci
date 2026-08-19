@@ -33,6 +33,12 @@ param(
     [switch]$PresentOnly,
     [switch]$ListAttributes,
     [switch]$Csv,
+    # No '-p' alias: in real lspci, -p names a custom ID file. Reusing it
+    # for something unrelated would mislead precisely the Linux users
+    # this output format exists for.
+    [switch]$Delimited,
+    [string]$Delimiter = '|',
+    [switch]$Header,
     [Alias('n')][switch]$Numeric,
     [Alias('nn')][switch]$NumericAndNames,
     [Alias('k')][switch]$ShowDriver,
@@ -126,6 +132,8 @@ if ($Attribute -or $Match -or $PresentOnly) {
         $records | ConvertTo-Json -Depth 5
     } elseif ($Csv) {
         $records | ConvertTo-Csv -NoTypeInformation
+    } elseif ($Delimited) {
+        $records | Format-PciDelimited -Delimiter $Delimiter -Header:$Header
     } else {
         $records | Format-Table -AutoSize
     }
@@ -137,6 +145,18 @@ if ($Attribute -or $Match -or $PresentOnly) {
 
 if ($Tree) {
     Format-PciTree -Devices $devices -Numeric $numericMode
+    if (($Device -or $Slot) -and $devices.Count -eq 0) { exit 1 }
+    exit 0
+}
+
+if ($Delimited) {
+    $devices | Format-PciDelimited -Delimiter $Delimiter -Header:$Header
+    if (($Device -or $Slot) -and $devices.Count -eq 0) { exit 1 }
+    exit 0
+}
+
+if ($Csv) {
+    $devices | ConvertTo-Csv -NoTypeInformation
     if (($Device -or $Slot) -and $devices.Count -eq 0) { exit 1 }
     exit 0
 }

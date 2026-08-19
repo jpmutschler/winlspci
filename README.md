@@ -129,7 +129,9 @@ Measured against Linux `lspci`, not aspirational.
 | `-Match <regex>` | Filter by **value** |
 | `-PresentOnly` | Drop attributes the device does not report |
 | `-ListAttributes` | Discover what is queryable |
-| `-Json` / `-Csv` | Structured output |
+| `-Delimited` | `\|`-separated records, for `-split` / `cut` / `awk` habits |
+| `-Delimiter` / `-Header` | Change the separator (e.g. tab); name the columns |
+| `-Json` / `-Csv` | Structured output; `-Csv` quotes properly |
 | `-Downtrained` | Only devices below their maximum speed or width |
 
 ---
@@ -178,6 +180,64 @@ Get-PciDevice | Where-Object { $_.LinkStateReported -and $_.LinkWidth -lt $_.Max
 # diff two machines
 Get-PciDevice | ConvertTo-PciAttributeRecord | Export-Csv machine-a.csv
 ```
+
+## Coming from Linux
+
+You cannot have `grep`, `awk` and `cut` here, but you can have the shape of
+them. `-Delimited` emits one record per line with `|` between fields:
+
+```
+PS> lspci -Delimited -s 01:
+01:00.0|1c5c|174a|0108|Non-Volatile memory controller|SK hynix|Gold P31 NVMe SSD|00|8GT/s|4|8GT/s|4|stornvme|OK
+```
+
+| Linux | Here |
+|---|---|
+| `lspci \| grep NVMe` | `lspci \| Select-String NVMe` |
+| `lspci -vv \| grep LnkSta` | `lspci -Attribute LinkSpeed,LinkWidth` |
+| `lspci \| cut -d' ' -f1` | `lspci -Delimited \| %{ ($_ -split '\|')[0] }` |
+| `lspci \| awk -F'\|' '{print $1, $9}'` | `lspci -Delimited \| %{ $f=$_ -split '\|'; "$($f[0]) $($f[8])" }` |
+| `lspci \| wc -l` | `(lspci).Count` |
+| `lspci -d 11f8: \|\| echo "absent"` | same — a filter matching nothing exits 1 |
+
+`-Header` names the columns; `-Delimiter "\`t"` gives you TSV.
+
+### Two properties worth relying on
+
+**An empty field means *not reported*; a literal `0` means zero.** The
+distinction the object model protects survives into the text form for free,
+because an unset value serialises to nothing at all:
+
+Real output from the machine this was written on:
+
+```
+00:1e.0|8086|a0a8|0780|Communication controller|Intel Corporation|Tiger Lake-LP Serial IO UART Controller #0|20|||||iaLPSS2_UART2_TGL|OK
+                                                                                                               ^^^^ four empty fields: no link state
+f3:00.0|10de|25a0|0302|3D controller|NVIDIA Corporation|GA107M [GeForce RTX 3050 Ti Mobile]|a1|8GT/s|4|16GT/s|16|nvlddmkm|OK
+```
+
+A device with no link state and a device genuinely training at x0 are different
+findings, and `grep`-shaped output normally destroys that difference.
+
+> The second line is also a real example of why `-Downtrained` exists: that GPU
+> reports **8GT/s x4 against a maximum of 16GT/s x16**. On a laptop that is
+> almost certainly link power management at idle rather than a fault — which is
+> the point. The tool tells you *what the link is doing*; deciding whether that
+> is a problem is still yours.
+Here it survives a `-split`.
+
+**The delimiter is stripped from values, not escaped.** Quoting rules turn a
+one-liner into a parser, which defeats the point — so a `|` appearing inside a
+value becomes `/` and the column count stays fixed. No `|` occurs in live PCI
+data or in `pci.ids` today, but `FriendlyName` comes from driver INF files and
+is not under our control. **If you need real quoting, use `-Csv`.**
+
+> Structured beats textual where it can: `lspci -Attribute LinkSpeed -Match '16GT|32GT|64GT'`
+> keeps types, so `LinkWidth -lt 4` is a numeric comparison rather than a
+> string one. `-Delimited` is for when you already know the pipeline you want
+> to write.
+
+---
 
 ## Three design decisions worth knowing
 

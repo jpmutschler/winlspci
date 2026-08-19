@@ -405,6 +405,86 @@ It 'an attribute query matching nothing exits non-zero' {
     Assert-Equal 1 $LASTEXITCODE
 }
 
+
+# ------------------------------------------------------ delimited output
+
+Write-Host "`nDelimited output"
+
+It 'emits one line per device with pipe-separated fields' {
+    $lines = @(Get-PciDevice -Slot '01:' | Format-PciDelimited)
+    Assert-True ($lines.Count -ge 1) 'no delimited output'
+    Assert-True ($lines[0].Contains('|')) "no delimiter in '$($lines[0])'"
+}
+
+It 'an absent value is an EMPTY field, not a zero' {
+    # The whole point of carrying the distinction into the text form: a device
+    # with no link state must not look like a device running at x0.
+    $noLink = @(Get-PciDevice | Where-Object { -not $_.LinkStateReported })[0]
+    if (-not $noLink) { Skip-Test 'every device here reports link state' }
+
+    $line = @($noLink | Format-PciDelimited)[0]
+    $fields = $line -split '\|'
+    # LinkSpeed and LinkWidth are fields 9 and 10 (1-indexed) of the device row.
+    Assert-Equal '' $fields[8] "LinkSpeed should be empty, got '$($fields[8])'"
+    Assert-Equal '' $fields[9] "LinkWidth should be empty, got '$($fields[9])'"
+}
+
+It 'a real zero survives as a literal 0' {
+    $fake = [pscustomobject]@{
+        Slot='01:00.0'; VendorId='dead'; DeviceId='beef'; ClassCode='0108'
+        ClassName='NVMe'; VendorName='T'; DeviceName='W'; Revision='00'
+        LinkSpeed='8GT/s'; LinkWidth=0; MaxLinkSpeed='8GT/s'; MaxLinkWidth=4
+        Driver='x'; Status='OK'
+    }
+    $fields = (@($fake | Format-PciDelimited)[0]) -split '\|'
+    Assert-Equal '0' $fields[9] 'a genuine zero must not become an empty field'
+}
+
+It 'strips a delimiter found inside a value rather than shifting columns' {
+    # FriendlyName comes from driver INF files and is not under our control.
+    # An unescaped delimiter would silently move every later column.
+    $fake = [pscustomobject]@{
+        Slot='01:00.0'; VendorId='dead'; DeviceId='beef'; ClassCode='0108'
+        ClassName='NVMe'; VendorName='Evil|Corp'; DeviceName='W'; Revision='00'
+        LinkSpeed='8GT/s'; LinkWidth=4; MaxLinkSpeed='8GT/s'; MaxLinkWidth=4
+        Driver='x'; Status='OK'
+    }
+    $line = @($fake | Format-PciDelimited)[0]
+    $fields = $line -split '\|'
+    Assert-Equal 14 $fields.Count 'column count must be stable'
+    Assert-Equal 'Evil/Corp' $fields[5]
+}
+
+It 'header row names the columns in order' {
+    $lines = @(Get-PciDevice -Slot '01:' | Format-PciDelimited -Header)
+    $header = ($lines[0] -split '\|')
+    Assert-Equal 'Slot' $header[0]
+    Assert-Equal 'LinkSpeed' $header[8]
+    Assert-Equal $header.Count (($lines[1] -split '\|').Count) `
+        'header and data must have the same column count'
+}
+
+It 'supports a different delimiter' {
+    $line = @(Get-PciDevice -Slot '01:' | Format-PciDelimited -Delimiter "`t")[0]
+    Assert-True ($line.Contains("`t")) 'tab delimiter not applied'
+}
+
+It 'attribute rows use their own column set' {
+    $line = @(Get-PciDevice -Slot '01:00.0' |
+        ConvertTo-PciAttributeRecord -Attribute 'LinkSpeed' |
+        Format-PciDelimited)[0]
+    $f = $line -split '\|'
+    Assert-Equal 6 $f.Count 'attribute rows are 6 columns'
+    Assert-Equal 'LinkSpeed' $f[3]
+}
+
+It 'the CLI emits delimited output and composes with Select-String' {
+    $cliPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'bin\lspci.ps1'
+    $out = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $cliPath -Delimited
+    $hit = @($out | Select-String -SimpleMatch '|')
+    Assert-True ($hit.Count -gt 0) 'delimited output should pipe into Select-String'
+}
+
 # ------------------------------------------------------------ summary
 
 Write-Host ''
