@@ -1,8 +1,8 @@
 # lspci -n -v
-00:1c.0 0604: 8086:a0bd (rev 20)
+00:1c.0 0604: 8086:a0bd (rev 20) (prog-if 00 [Normal decode])
         LnkSta: not reported by this device
         Driver: pci (10.0.26100.1)
-01:00.0 0108: 1c5c:174a (rev 00)
+01:00.0 0108: 1c5c:174a (rev 00) (prog-if 02 [NVM Express])
         LnkSta: 8GT/s x4 (max 8GT/s x4)
         Driver: stornvme (10.0.26100.8972)
 # lspci -t -n

@@ -1,8 +1,8 @@
 # lspci -n -v
-00:1c.0 0604: 8086:a0bd (rev 20)
+00:1c.0 0604: 8086:a0bd (rev 20) (prog-if 00 [Normal decode])
         LnkSta: not reported by this device
         Driver: pci
-01:00.0 0300: 10de:2684 (rev a1)
+01:00.0 0300: 10de:2684 (rev a1) (prog-if 00 [VGA controller])
         LnkSta: 16GT/s x16 (max 16GT/s x16)
         Driver: nvlddmkm (32.0.15.6094)  STATUS=Unknown PROBLEM=45
 02:00.0 0200: 8086:15f3 (rev 03)

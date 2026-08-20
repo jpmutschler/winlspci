@@ -32,7 +32,7 @@ function Format-Lspci {
             # A device that reports no class is said to have none -- never
             # shown as class 0000 or as the real class-00 name.
             $classCode = Get-Field $d 'ClassCode'
-            $className = Get-Field $d 'ClassName'
+            $className = ConvertTo-SafeText (Get-Field $d 'ClassName')   # pci.ids text, -i makes it user-supplied
             if (-not $classCode) { $classCode = '????' }
             if (-not $className) { $className = 'Unknown class' }
 
@@ -50,7 +50,15 @@ function Format-Lspci {
             $rev = ''
             $revision = Get-Field $d 'Revision'
             if ($revision) { $rev = " (rev $revision)" }
-            Write-Output ("{0} {1}: {2}{3}" -f (Get-Field $d 'Slot'), $classPart, $ident, $rev)
+            # lspci -v appends "(prog-if 02 [NVM Express])" when the database
+            # names the programming interface.
+            $progIfPart = ''
+            if ($Verbosity -ge 1) {
+                $pi = Get-Field $d 'ProgIf'
+                $piName = ConvertTo-SafeText (Get-Field $d 'ProgIfName')
+                if ($null -ne $pi -and $piName) { $progIfPart = (' (prog-if {0:x2} [{1}])' -f [int]$pi, $piName) }
+            }
+            Write-Output ("{0} {1}: {2}{3}{4}" -f (Get-Field $d 'Slot'), $classPart, $ident, $rev, $progIfPart)
 
             if ($Verbosity -ge 1) {
                 # lspci prints the chassis slot right under the header line.
@@ -121,9 +129,15 @@ function Format-Lspci {
                 # lspci omits the line; so do we, rather than inventing
                 # "Vendor 0000" for it.
                 if ($subVen -and $subDev -and -not ($subVen -eq '0000' -and $subDev -eq '0000')) {
-                    $subName = Get-PciVendorName $subVen
-                    if (-not $subName) { $subName = "Vendor $subVen" }
-                    Write-Output "        Subsystem: $subName [${subVen}:${subDev}]"
+                    # "Subsystem: SK hynix Gold P31 [1c5c:174a]" when pci.ids
+                    # names the pair; the vendor name alone when it does not.
+                    $subVenName = ConvertTo-SafeText (Get-Field $d 'SubsystemVendorName')
+                    if (-not $subVenName) { $subVenName = Get-PciVendorName $subVen }
+                    if (-not $subVenName) { $subVenName = "Vendor $subVen" }
+                    $subName = ConvertTo-SafeText (Get-Field $d 'SubsystemName')
+                    $subText = $subVenName
+                    if ($subName) { $subText = "$subVenName $subName" }
+                    Write-Output "        Subsystem: $subText [${subVen}:${subDev}]"
                 }
                 $mps = Get-Field $d 'MaxPayloadSize'
                 if ($null -ne $mps) {

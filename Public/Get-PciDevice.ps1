@@ -3,8 +3,9 @@
 # run a full ~2s enumeration to ask one object what its fields were called),
 # and pinned by a test that compares it against a live object.
 $script:AttributeNames = @(
-    'Slot', 'Domain', 'VendorId', 'DeviceId', 'SubsystemVendorId', 'SubsystemId', 'Revision',
-    'VendorName', 'DeviceName', 'ClassCode', 'ClassName', 'ProgIf',
+    'Slot', 'Domain', 'VendorId', 'DeviceId', 'SubsystemVendorId', 'SubsystemId',
+    'SubsystemVendorName', 'SubsystemName', 'Revision',
+    'VendorName', 'DeviceName', 'ClassCode', 'ClassName', 'ProgIf', 'ProgIfName',
     'FriendlyName', 'Driver', 'DriverVersion', 'Status', 'Problem', 'NumaNode',
     'LinkStateReported', 'LinkSpeed', 'LinkSpeedRaw', 'LinkWidth',
     'MaxLinkSpeed', 'MaxLinkSpeedRaw', 'MaxLinkWidth', 'Downtrained',
@@ -173,14 +174,24 @@ function Get-PciDevice {
             $mrrs = $script:PayloadSize[[int]$mrrsRaw]
         }
 
-        $className = $null
+        $className = $null; $progIfName = $null
         if ($null -ne $baseClass) {
             if ($null -ne $subClass) {
                 $className = Get-PciClassName -BaseClass ([int]$baseClass) -SubClass ([int]$subClass)
+                # pci.ids names some prog-ifs ("NVM Express", "XHCI"); lspci
+                # prints them as "(prog-if 02 [NVM Express])". Only when the
+                # database has a distinct entry -- never the subclass name twice.
+                if ($null -ne $progIf) {
+                    $p = Get-PciClassName -BaseClass ([int]$baseClass) -SubClass ([int]$subClass) -ProgIf ([int]$progIf)
+                    if ($p -ne $className) { $progIfName = $p }
+                }
             } else {
                 $className = Get-PciClassName -BaseClass ([int]$baseClass)
             }
         }
+        $subVenName = $null; $subName = $null
+        if ($subVen) { $subVenName = Get-PciVendorName $subVen }
+        if ($subVen -and $subDev) { $subName = Get-PciSubsystemName $ven $dev $subVen $subDev }
 
         $downtrain = Get-LinkDowntrainReason $curSpeed $maxSpeed $curWidth $maxWidth
 
@@ -232,12 +243,15 @@ function Get-PciDevice {
             DeviceId         = $dev
             SubsystemVendorId = $subVen
             SubsystemId      = $subDev
+            SubsystemVendorName = $subVenName
+            SubsystemName    = $subName
             Revision         = $rev
             VendorName       = Get-PciVendorName $ven
             DeviceName       = Get-PciDeviceName $ven $dev
             ClassCode        = $classHex
             ClassName        = $className
             ProgIf           = $progIf
+            ProgIfName       = $progIfName
             FriendlyName     = $pnp.Name
             Driver           = $pnp.Service
             DriverVersion    = Get-BagValue $bag 'DEVPKEY_Device_DriverVersion'

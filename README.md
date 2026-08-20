@@ -61,6 +61,7 @@ PCI bus driver from config space at enumeration time.
 | **Capability presence**: AER, MSI, MSI-X (+ vector count), SR-IOV, ACS, ARI, ATS, AtomicOps; PCIe capability version | |
 | **Physical slot** number, firmware location path, device serial number (DSN) | |
 | **Power state** (most recent D-state) — shown next to a `DOWNTRAINED` flag when it explains it | |
+| Subsystem and programming-interface **names** from pci.ids (`Subsystem: Dell PERC H740P [1028:1fd2]`, `(prog-if 02 [NVM Express])`) | |
 | NUMA node | |
 | **Bus topology** (parent/child, via `DEVPKEY_Device_Parent`) | |
 | Every field above, queryable **per attribute** | |
@@ -81,6 +82,7 @@ to PCI config space; that needs a signed kernel-mode driver. ...
 | 0 | ok |
 | 1 | a filter (`-s`, `-d`, `-Downtrained`, `-Attribute`/`-Match`) matched nothing |
 | 2 | the request is impossible here (`-x`) or a known lspci flag this tool does not implement (`-m`, `-p`, `-b`, …) |
+| 3 | `-Diff` / `-Watch` found differences |
 | 64 | usage error: unknown option, or a selector that is not hex |
 | 70 | the WMI enumeration itself failed (Windows/WMI error — not an empty machine; retry, or check the Winmgmt service) |
 
@@ -145,6 +147,8 @@ Measured against Linux `lspci`, not aspirational.
 | `-nn` | `-nn` | Names and IDs |
 | `-D` | `-D` | Domain on every line. `0000` on ordinary machines. Hyper-V / Azure SR-IOV functions carry the PCI segment in the upper bits of Windows' bus number (`PCI bus 5598976` = segment `556f`, bus `00`); those always show it, as lspci does: `556f:00:02.0` |
 | `-k` | `-k` | Driver and version (the same lines `-v` shows) |
+| `-m` / `-mm` | `-m` / `-mm` | lspci's machine-readable forms: one quoted line per device, or `Key:\tValue` records. Quoted and escaped the way lspci does it (unlike `-Delimited`, these *are* parsed by other tools) |
+| `-i <file>` | `-i <file>` | Use an alternate `pci.ids` |
 | `-tv`, `-nnk`, `-vvnn` … | same | Short flags combine, as in lspci; they are **case-sensitive** (`-D` ≠ `-d`) |
 
 Long options (`-Json`, `-Downtrained`, `-Attribute` …) are case-insensitive and
@@ -166,7 +170,7 @@ may be abbreviated to a unique prefix.
 
 ### Not implemented (possible, just not built)
 
-`-b` (bus-centric view) · `-m`/`-mm` (machine-readable — `-Json`/`-Csv`/`-Attribute` supersede it) · `-p` (custom ID file) · `-P` (path display) · `-i` (custom pci.ids path) · `-q`/`-Q` (online ID lookup) · `-A`/`-O`/`-F`/`-G`/`-H1`/`-H2` (access methods — meaningless here) · `-M` (bus mapping)
+`-b` (bus-centric view — Windows exposes no bus-relative view distinct from the CPU one) · `-p` (custom ID file; `-i` loads an alternate `pci.ids`) · `-P` (path display) · `-q`/`-Q` (online ID lookup) · `-A`/`-O`/`-F`/`-G`/`-H1`/`-H2` (access methods — meaningless here) · `-M` (bus mapping)
 
 Each of these is recognised and exits 2 with *"not implemented"* and a
 pointer to the nearest equivalent. (An earlier version let PowerShell's
@@ -186,6 +190,8 @@ typed is worse than one that says no.) Anything else unknown exits 64.
 | `-Delimiter` / `-Header` | Change the separator (e.g. tab); name the columns |
 | `-Json` / `-Csv` | Structured output; `-Csv` quotes properly. The JSON envelope carries `schemaVersion` (currently 1), `winlspciVersion`, `generatedAt` and `computerName` (so two machines can be diffed — note it names your host if you paste the output publicly); additive changes keep the schema version, a rename or change of meaning bumps it |
 | `-Downtrained` | Only devices below their maximum speed or width (the `Downtrained` property). A filter: exits 1 when nothing is |
+| `-Baseline <file>` / `-Diff <file>` | Save the enumeration; later, report what appeared, disappeared or changed (exit 3 if anything did). `PowerState` is ignored unless `-IncludeVolatile`; `-IgnoreAttribute DriverVersion,Link*` to leave out what you expect to move |
+| `-Watch <seconds>` | Re-enumerate on an interval and print only the changes, timestamped — hot-plug, retimer bring-up, link flaps. `-Iterations <n>` to stop after n passes |
 
 ---
 
@@ -322,6 +328,48 @@ clear error, not a .NET exception per device.
 
 ---
 
+## Baseline, diff, watch
+
+The attribute-record shape was always meant for "did anything change?"; now the
+tool finishes the job.
+
+```
+PS> lspci -Baseline before.json          # 24 devices written
+   ... reboot / flash firmware / swap a card ...
+PS> lspci -Diff before.json
+~ 01:00.0  LinkWidth: 4 -> 1
+- 02:00.0  gone: 8086:15f3 Ethernet Controller I225-V
++ 03:00.0  appeared: 10de:2684 AD102 [GeForce RTX 4090]
+PS> $LASTEXITCODE                        # 3: differences found (0 = identical)
+```
+
+- Devices are matched by `InstanceId`; a reseated card whose instance id
+  changed but whose slot and ids did not is reported as `Changed(InstanceId)`,
+  not as a removed/added pair.
+- Absent stays distinct from zero in the diff: an attribute that went from
+  not reported to `0` is reported as `<absent> -> 0`.
+- Only `PowerState` is ignored by default — it flips with idle and would
+  answer "did the update change anything" with D-state noise every time;
+  `-IncludeVolatile` compares it too. Everything else is compared, because
+  the point is to see what moved. `-IgnoreAttribute` takes names with
+  wildcards (`DriverVersion` after an intended update; `Link*` if you only
+  care about presence).
+- A `-d` / `-s` selector applies to both sides — `lspci -d 1c5c: -Diff
+  before.json` diffs just the NVMe against the baseline's NVMe — and a
+  selector matching nothing is still exit 1.
+- A newer baseline's extra attributes are reported too (`value -> <absent>`);
+  the comparison walks the union of both sides.
+- `-Diff` takes `-Json` / `-Csv` / `-Delimited` for scripts. A baseline file is
+  the same envelope `lspci -Json` writes, so either serves as the other.
+- `lspci -Watch 2` re-enumerates every 2 s and prints only changes,
+  timestamped, until Ctrl-C (`-Iterations n` to stop after n passes; exit 3 if
+  anything changed). Each pass is a full enumeration, so ~2 s is the floor.
+
+From the module: `Export-PciBaseline`, `Compare-PciBaseline` (file vs now),
+`Compare-PciDeviceSet` (any two sets).
+
+---
+
 ## Device type, capabilities, slot, power
 
 All four come from DEVPKEYs the PCI bus driver fills from config space at
@@ -454,7 +502,9 @@ the provider materialises far less per instance. The `LIKE` text has exactly
 two backslashes and `[_]` for the underscore (WQL's single-character wildcard)
 — get the escaping wrong and the query returns **zero rows silently**, which
 renders as a machine with no PCI bus. A test pins its row count against a
-client-side `-like`. Parsing `pci.ids` is ~50ms and not worth optimising.
+client-side `-like`. Parsing `pci.ids` is ~110ms (it was ~50ms before
+subsystem names were indexed; +60ms for real subsystem names was judged worth
+it) and not worth optimising further.
 
 ---
 
@@ -492,9 +542,11 @@ Public\                  exported functions, one file per function or cohesive g
   Get-PciDevice.ps1        enumeration and the device object shape
   Format-Lspci.ps1         lspci-style text
   Format-PciTree.ps1       -t
+  Format-PciMachine.ps1    -m / -mm
   Attributes.ps1           ConvertTo-PciAttributeRecord, Get-PciAttributeName
   Format-PciDelimited.ps1  -Delimited
-  PciIds.ps1               pci.ids parse, lookups, Update-PciIds
+  Compare-PciBaseline.ps1  Export-PciBaseline, Compare-PciBaseline, Compare-PciDeviceSet
+  PciIds.ps1               pci.ids parse (vendors, devices, subsystems, classes, prog-ifs), lookups, Update-PciIds
 Private\                 internal helpers
   DeviceProperties.ps1     DEVPKEY fetch, BDF, class-from-hardware-id
   Selectors.ps1            -s and -d parsing

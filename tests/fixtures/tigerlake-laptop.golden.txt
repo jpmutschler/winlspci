@@ -2,19 +2,19 @@
 00:00.0 0600: 8086:9a14 (rev 01)
         LnkSta: not reported by this device
         Driver: <none> (10.0.26100.1150)
-00:02.0 0300: 8086:9a49 (rev 01)
+00:02.0 0300: 8086:9a49 (rev 01) (prog-if 00 [VGA controller])
         LnkSta: root-complex integrated endpoint: no link
         Type: PCIe Root Complex Integrated Endpoint (PCIe capability v2)
         Driver: igfxn (32.0.101.7088)
-00:06.0 0604: 8086:9a09 (rev 01)
+00:06.0 0604: 8086:9a09 (rev 01) (prog-if 00 [Normal decode])
         LnkSta: not reported by this device
         Type: PCIe Root Port (PCIe capability v2)
         Driver: pci (10.0.26100.8972)
-00:07.0 0604: 8086:9a23 (rev 01)
+00:07.0 0604: 8086:9a23 (rev 01) (prog-if 00 [Normal decode])
         LnkSta: not reported by this device
         Type: PCIe Root Port (PCIe capability v2)
         Driver: pci (10.0.26100.8972)
-00:07.1 0604: 8086:9a25 (rev 01)
+00:07.1 0604: 8086:9a25 (rev 01) (prog-if 00 [Normal decode])
         LnkSta: not reported by this device
         Type: PCIe Root Port (PCIe capability v2)
         Driver: pci (10.0.26100.8972)
@@ -22,11 +22,11 @@
         LnkSta: root-complex integrated endpoint: no link
         Type: PCIe Root Complex Integrated Endpoint (PCIe capability v1)
         Driver: IntelPMT (10.0.26100.8972)
-00:0d.0 0c03: 8086:9a13 (rev 01)
+00:0d.0 0c03: 8086:9a13 (rev 01) (prog-if 30 [XHCI])
         LnkSta: Windows reports this as a conventional PCI device: no PCIe link
         Type: PCI
         Driver: USBXHCI (10.0.26100.8972)
-00:0d.2 0c03: 8086:9a1b (rev 01)
+00:0d.2 0c03: 8086:9a1b (rev 01) (prog-if 40 [USB4 Host Interface])
         LnkSta: Windows reports this as a conventional PCI device: no PCIe link
         Type: PCI
         Driver: nhi (1.41.1423.0)
@@ -38,7 +38,7 @@
         LnkSta: Windows reports this as a conventional PCI device: no PCIe link
         Type: PCI
         Driver: IntelTHCBase (3.0.101.251)
-00:14.0 0c03: 8086:a0ed (rev 20)
+00:14.0 0c03: 8086:a0ed (rev 20) (prog-if 30 [XHCI])
         LnkSta: Windows reports this as a conventional PCI device: no PCIe link
         Type: PCI
         Driver: USBXHCI (10.0.26100.8972)
@@ -58,11 +58,11 @@
         LnkSta: Windows reports this as a conventional PCI device: no PCIe link
         Type: PCI
         Driver: MEIx64 (2540.8.7.0)
-00:1c.0 0604: 8086:a0bd (rev 20)
+00:1c.0 0604: 8086:a0bd (rev 20) (prog-if 00 [Normal decode])
         LnkSta: not reported by this device
         Type: PCIe Root Port (PCIe capability v2)
         Driver: pci (10.1.24.5)
-00:1d.0 0604: 8086:a0b0 (rev 20)
+00:1d.0 0604: 8086:a0b0 (rev 20) (prog-if 00 [Normal decode])
         LnkSta: not reported by this device
         Type: PCIe Root Port (PCIe capability v2)
         Driver: pci (10.1.24.5)
@@ -74,7 +74,7 @@
         LnkSta: Windows reports this as a conventional PCI device: no PCIe link
         Type: PCI
         Driver: msisadrv (10.1.24.5)
-00:1f.3 0403: 8086:a0c8 (rev 20)
+00:1f.3 0403: 8086:a0c8 (rev 20) (prog-if 80 [HDA compatible with vendor specific extensions])
         LnkSta: Windows reports this as a conventional PCI device: no PCIe link
         Type: PCI
         Driver: IntcAudioBus (10.29.0.12108)
@@ -82,7 +82,7 @@
         LnkSta: Windows reports this as a conventional PCI device: no PCIe link
         Type: PCI
         Driver: <none> (10.1.24.5)
-01:00.0 0108: 1c5c:174a (rev 00)
+01:00.0 0108: 1c5c:174a (rev 00) (prog-if 02 [NVM Express])
         LnkSta: 8GT/s x4 (max 8GT/s x4)
         Type: PCIe Endpoint (PCIe capability v2)
         Driver: stornvme (10.0.26100.8972)

@@ -42,8 +42,10 @@ Usage: lspci [<switches>]
 
 Selection:        -s [[[<domain>]:]<bus>:]<device>[.<func>]   -d [<vendor>]:[<device>][:<class>]
 Output:           -v / -vv / -vvv   -n   -nn   -k   -t   -D   -Downtrained
-Structured:       -Json   -Csv   -Delimited [-Delimiter <d>] [-Header]
+Machine-readable: -m   -mm   -Json   -Csv   -Delimited [-Delimiter <d>] [-Header]
 Attributes:       -Attribute <names>   -Match <regex>   -PresentOnly   -ListAttributes
+Lab:              -Baseline <file>   -Diff <file> [-IgnoreAttribute <names>] [-IncludeVolatile]
+                  -Watch <seconds> [-Iterations <n>]   -i <pci.ids>
 Other:            -Version   --help
 
 Short flags combine as in lspci (-tv, -nnk, -vvnn). Long names are
@@ -69,6 +71,8 @@ $opt = @{
     Domain = $false; Attribute = @(); Match = $null; PresentOnly = $false
     ListAttributes = $false; Csv = $false; Delimited = $false; Delimiter = '|'
     Header = $false; Json = $false; Downtrained = $false; Version = $false
+    Machine = 0; IdsFile = $null
+    Baseline = $null; Diff = $null; IgnoreAttribute = @(); IncludeVolatile = $false; Watch = 0; Iterations = 0
 }
 
 # Long options: name -> takes a value? Matched case-insensitively, exact or
@@ -80,31 +84,30 @@ $longOptions = [ordered]@{
     'Delimiter' = $true; 'Header' = $false; 'Json' = $false
     'Downtrained' = $false; 'Numeric' = $false; 'NumericAndNames' = $false
     'ShowDriver' = $false; 'Version' = $false; 'Help' = $false
+    'Baseline' = $true; 'Diff' = $true; 'IgnoreAttribute' = $true; 'IncludeVolatile' = $false
+    'Watch' = $true; 'Iterations' = $true; 'IdsFile' = $true
 }
 
 # Short flags are CASE-SENSITIVE, as in lspci: -D is domain, -d is a filter.
-$shortSwitches = 'vnktD'          # combinable, no value
-$shortWithValue = 'sd'            # -s 01:00.0  or  -s01:00.0
+$shortSwitches = 'vnktDm'         # combinable, no value (-m once, -mm twice)
+$shortWithValue = 'sdi'           # -s 01:00.0  or  -s01:00.0 ; -i <pci.ids>
+# 'vnktDm' / 'sdi' are read by the parser below, never edit one without the other.
 
 # lspci flags this tool knows about and deliberately does not implement. Said
 # so, with a pointer, rather than bound to something unrelated or ignored.
 # A case-SENSITIVE dictionary: a PowerShell hashtable literal folds 'm' and
 # 'M' (or 'p' and 'P') into one key and refuses to load.
 $notImplemented = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
-$machine = 'machine-readable output: use -Json, -Csv or -Delimited'
 $lookup  = 'online ID lookup is not implemented; run Update-PciIds to refresh pci.ids'
 $access  = 'access methods do not apply: there is no config-space access on Windows'
 $path    = 'path display is not implemented; -t shows the topology'
-$notImplemented['m']  = $machine
-$notImplemented['mm'] = $machine
-$notImplemented['b']  = 'bus-centric view is not implemented'
+$notImplemented['b']  = 'bus-centric view is not implemented: Windows exposes no bus-relative view distinct from the CPU one'
 $notImplemented['P']  = $path
 $notImplemented['PP'] = $path
 $notImplemented['q']  = $lookup
 $notImplemented['qq'] = $lookup
 $notImplemented['Q']  = $lookup
-$notImplemented['i']  = 'an alternate pci.ids path is not implemented; the bundled data\pci.ids is used'
-$notImplemented['p']  = 'a custom ID file is not implemented'
+$notImplemented['p']  = 'a custom ID file is not implemented (-i <file> loads an alternate pci.ids)'
 $notImplemented['M']  = 'bus mapping mode is not implemented'
 foreach ($f in 'A', 'O', 'F', 'G', 'H1', 'H2') { $notImplemented[$f] = $access }
 
@@ -130,6 +133,13 @@ function Set-LongOption {
         'ShowDriver'      { if ($opt.Verbosity -lt 1) { $opt.Verbosity = 1 } }
         'Version'         { $opt.Version = $true }
         'Help'            { Write-Usage; exit 0 }
+        'Baseline'        { $opt.Baseline = "$Value" }
+        'Diff'            { $opt.Diff = "$Value" }
+        'IgnoreAttribute' { $opt.IgnoreAttribute += @("$Value" -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }) }
+        'IncludeVolatile' { $opt.IncludeVolatile = $true }
+        'Watch'           { $opt.Watch = "$Value" }
+        'Iterations'      { $opt.Iterations = "$Value" }
+        'IdsFile'         { $opt.IdsFile = "$Value" }
     }
 }
 
@@ -141,6 +151,7 @@ function Set-ShortSwitch {
         'k' { if ($opt.Verbosity -lt 1) { $opt.Verbosity = 1 } }  # driver is part of -v
         't' { $opt.Tree = $true }
         'D' { $opt.Domain = $true }
+        'm' { if ($opt.Machine -lt 2) { $opt.Machine++ } }      # -m line form, -mm record form
     }
 }
 
@@ -265,7 +276,9 @@ while ($i -lt $argv.Count) {
                 } else {
                     Fail "-$ch requires a value" 64
                 }
-                if ("$ch" -ceq 's') { $opt.Slot = $value } else { $opt.Device = $value }
+                if ("$ch" -ceq 's') { $opt.Slot = $value }
+                elseif ("$ch" -ceq 'i') { $opt.IdsFile = $value }
+                else { $opt.Device = $value }
                 break
             }
             Set-ShortSwitch $ch
@@ -324,7 +337,19 @@ if ($opt.ListAttributes) {
 
 if ($opt.Delimiter -eq '') { Fail '-Delimiter must not be empty' 64 }
 $formats = @(@('Json', 'Csv', 'Delimited') | Where-Object { $opt[$_] })
+if ($opt.Machine -gt 0) { $formats += 'm' }
 if ($formats.Count -gt 1) { Fail "choose one output format, not -$($formats -join ' and -')" 64 }
+
+if ($opt.IdsFile) {
+    try { Import-PciIds -Path $opt.IdsFile } catch { Fail $_.Exception.Message 64 }
+}
+
+foreach ($numeric in @(@('Watch', $opt.Watch), @('Iterations', $opt.Iterations))) {
+    $n = 0
+    if (-not [int]::TryParse("$($numeric[1])", [ref]$n) -or $n -lt 0) { Fail "-$($numeric[0]) takes a non-negative whole number, got '$($numeric[1])'" 64 }
+    $opt[$numeric[0]] = $n
+}
+if ($argv -contains '-Watch' -and $opt.Watch -eq 0) { Fail '-Watch needs an interval of at least 1 second' 64 }
 
 # Sorted by slot, as lspci does. Windows enumerates in an order that looks
 # arbitrary to a reader scanning for a bus number.
@@ -359,6 +384,86 @@ $filtered = [bool]($opt.Device -or $opt.Slot -or $opt.Downtrained)
 $exitCode = 0
 if ($filtered -and $devices.Count -eq 0) { $exitCode = 1 }
 
+# ----------------------------------------------------------- lab workflows
+
+if ($opt.Baseline) {
+    Export-PciBaseline -Path $opt.Baseline -Device $devices
+    if ($opt.Json) { ConvertTo-Json -InputObject ([pscustomobject]@{ written = $devices.Count; path = $opt.Baseline }) }
+    else { Write-Output "baseline: $($devices.Count) devices written to $($opt.Baseline)" }
+    exit $exitCode
+}
+
+function Write-DiffRecords {
+    param($Records, [string]$Stamp)
+    foreach ($r in $Records) {
+        $prefix = ''
+        if ($Stamp) { $prefix = "$Stamp  " }
+        switch ($r.Change) {
+            'Added'   { Write-Output "$prefix+ $($r.Slot)  appeared: $($r.Now)" }
+            'Removed' { Write-Output "$prefix- $($r.Slot)  gone: $($r.Was)" }
+            'Changed' { Write-Output "$prefix~ $($r.Slot)  $($r.Attribute): $($r.Was) -> $($r.Now)" }
+        }
+    }
+}
+
+if ($opt.Diff) {
+    # "Did the reboot / firmware / driver update change anything?" Exit 0 when
+    # identical, 3 when there are differences -- a third answer, distinct from
+    # "a filter matched nothing" (1).
+    # A -d/-s filter applies to BOTH sides (the baseline is filtered the same
+    # way), so "diff just the NVMe" works and a filter matching nothing is
+    # still exit 1, not "everything disappeared".
+    if ($filtered -and $devices.Count -eq 0) { Write-Output 'no matching PCI device'; exit 1 }
+    try {
+        $records = @(Compare-PciBaseline -Path $opt.Diff -Device $devices -IgnoreAttribute $opt.IgnoreAttribute `
+            -IncludeVolatile:$opt.IncludeVolatile -DeviceFilter $opt.Device -SlotFilter $opt.Slot)
+    } catch { Fail $_.Exception.Message 64 }
+    if ($opt.Json) { if ($records.Count -eq 0) { Write-Output '[]' } else { ConvertTo-Json -InputObject $records -Depth 4 } }
+    elseif ($opt.Csv) { $records | ConvertTo-Csv -NoTypeInformation }
+    elseif ($opt.Delimited) { $records | Format-PciDelimited -Field Change, Slot, Attribute, Was, Now -Delimiter $opt.Delimiter -Header:$opt.Header }
+    else {
+        if ($records.Count -eq 0) { Write-Output "no differences against $($opt.Diff) ($($devices.Count) devices)" }
+        else { Write-DiffRecords $records }
+    }
+    if ($records.Count -gt 0) { exit 3 }
+    exit 0
+}
+
+if ($opt.Watch -gt 0) {
+    # Re-enumerate every N seconds and print only what changed, timestamped.
+    # Hot-plug, retimer bring-up, link flaps. Each pass is a full enumeration
+    # (~2s), so the floor is about that; Ctrl-C stops it. -Iterations <n>
+    # stops after n passes (tests use it), 0 = forever.
+    $prev = $devices
+    Write-Output ("{0}  watching {1} devices every {2}s (Ctrl-C to stop)" -f (Get-Date -Format 'HH:mm:ss'), $prev.Count, $opt.Watch)
+    $passes = 0
+    $changes = 0
+    $failures = 0
+    while ($true) {
+        Start-Sleep -Seconds $opt.Watch
+        $passes++
+        try {
+            $now = @(Get-PciDevice -Device $opt.Device -Slot $opt.Slot | Sort-Object Slot)
+            $failures = 0
+        } catch {
+            # A failed pass still counts toward -Iterations, and three in a
+            # row means WMI is down, not flapping: give up with exit 70.
+            $failures++
+            Write-Output ("{0}  enumeration failed: {1}" -f (Get-Date -Format 'HH:mm:ss'), $_.Exception.Message)
+            if ($failures -ge 3) { Fail 'enumeration failed three times in a row; stopping the watch' 70 }
+            if ($opt.Iterations -gt 0 -and $passes -ge $opt.Iterations) { break }
+            continue
+        }
+        if ($opt.Downtrained) { $now = @($now | Where-Object { $_.Downtrained }) }
+        $records = @(Compare-PciDeviceSet -Before $prev -After $now -IgnoreAttribute $opt.IgnoreAttribute -IncludeVolatile:$opt.IncludeVolatile)
+        if ($records.Count -gt 0) { Write-DiffRecords $records (Get-Date -Format 'HH:mm:ss'); $changes += $records.Count }
+        $prev = $now
+        if ($opt.Iterations -gt 0 -and $passes -ge $opt.Iterations) { break }
+    }
+    if ($changes -gt 0) { exit 3 }
+    exit 0
+}
+
 if ($opt.Attribute.Count -gt 0 -or $opt.Match -or $opt.PresentOnly) {
     $args2 = @{}
     if ($opt.Attribute.Count -gt 0) { $args2['Attribute'] = $opt.Attribute }
@@ -387,6 +492,11 @@ if ($opt.Attribute.Count -gt 0 -or $opt.Match -or $opt.PresentOnly) {
 
 if ($opt.Tree) {
     Format-PciTree -Devices $devices -Numeric $opt.Numeric
+    exit $exitCode
+}
+
+if ($opt.Machine -gt 0) {
+    $devices | Format-PciMachine -Mode $opt.Machine -Numeric $opt.Numeric
     exit $exitCode
 }
 

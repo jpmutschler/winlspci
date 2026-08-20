@@ -30,7 +30,8 @@ jobs:
 
       - name: Run the test suite
         shell: cmd
-        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\Invoke-Tests.ps1
+        # -NonInteractive: a mandatory-parameter prompt must fail, not hang the job.
+        run: powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tests\Invoke-Tests.ps1
 
   powershell-7:
     # The README says "5.1 or later"; this is the "or later". Same suite,
@@ -46,7 +47,7 @@ jobs:
 
       - name: Run the test suite under pwsh
         shell: pwsh
-        run: ./tests/Invoke-Tests.ps1
+        run: pwsh -NonInteractive -File ./tests/Invoke-Tests.ps1
 
   lint:
     runs-on: windows-latest

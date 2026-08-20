@@ -109,9 +109,9 @@ function New-FakeDevice {
     param([hashtable]$Override = @{})
     $d = [ordered]@{
         Slot = '01:00.0'; Domain = 0; VendorId = 'dead'; DeviceId = 'beef'
-        SubsystemVendorId = 'dead'; SubsystemId = 'cafe'; Revision = '00'
+        SubsystemVendorId = 'dead'; SubsystemId = 'cafe'; SubsystemVendorName = $null; SubsystemName = $null; Revision = '00'
         VendorName = 'Test'; DeviceName = 'Widget'
-        ClassCode = '0108'; ClassName = 'NVMe'; ProgIf = 2; FriendlyName = 'Widget'
+        ClassCode = '0108'; ClassName = 'NVMe'; ProgIf = 2; ProgIfName = $null; FriendlyName = 'Widget'
         Driver = 'x'; DriverVersion = '1'; Status = 'OK'; Problem = 0; NumaNode = $null
         LinkStateReported = $true
         LinkSpeed = '8GT/s'; LinkSpeedRaw = 3; LinkWidth = 4
@@ -178,6 +178,68 @@ It 'decodes device classes' {
 It 'falls back to the base class when the subclass is unknown' {
     $n = Get-PciClassName -BaseClass 1 -SubClass 254
     Assert-True ($n -like '*storage*' -or $n -like '*Mass storage*') "got '$n'"
+}
+
+It 'indexes subsystems and prog-ifs, and resolves them' {
+    $m = Get-Module winlspci
+    $counts = & $m { "$($script:SubsystemNames.Count)|$($script:ClassNames.Count)" }
+    $subCount = [int]($counts -split '\|')[0]
+    Assert-True ($subCount -gt 10000) "expected thousands of subsystems, got $subCount"
+    # A real key from the table, whatever the database vintage.
+    $key = & $m { @($script:SubsystemNames.Keys)[0] }
+    $parts = $key -split '/'   # vendor/device/svendorsdevice
+    $n = Get-PciSubsystemName -VendorId $parts[0] -DeviceId $parts[1] -SubsystemVendorId $parts[2].Substring(0, 4) -SubsystemId $parts[2].Substring(4)
+    Assert-True ([bool]$n) "subsystem $key did not resolve"
+    Assert-Equal $null (Get-PciSubsystemName 'dead' 'beef' 'dead' 'beef') 'unknown subsystem is null'
+    Assert-Equal 'NVM Express' (Get-PciClassName -BaseClass 1 -SubClass 8 -ProgIf 2)
+    Assert-Equal 'XHCI' (Get-PciClassName -BaseClass 0xc -SubClass 3 -ProgIf 0x30)
+    Assert-Equal 'Non-Volatile memory controller' (Get-PciClassName -BaseClass 1 -SubClass 8 -ProgIf 0x7f) 'unknown prog-if falls back to the subclass'
+}
+
+It 'Import-PciIds -Path loads an alternate database, and rejects a missing one' {
+    Assert-Throws { Import-PciIds -Path 'C:\definitely\not\here.ids' } -Like '*no such file*'
+    $tmp = [IO.Path]::GetTempFileName()
+    try {
+        # A tiny curated database: vendor dead, device beef, class 01/08.
+        @('dead  Test Vendor', "`tbeef  Test Widget", 'C 01  Mass storage controller', "`t08  Non-Volatile memory controller") | Set-Content $tmp -Encoding Ascii
+        Import-PciIds -Path $tmp
+        Assert-Equal 'Test Vendor' (Get-PciVendorName 'dead')
+        Assert-Equal $null (Get-PciVendorName '8086') 'the override replaces the bundled database for the session'
+        # The override must NOT become Update-PciIds' target: -WhatIf names
+        # the bundled file, never the curated one.
+        $m = Get-Module winlspci
+        $target = & $m { $script:PciIdsPath }
+        Assert-True ($target -like '*data\pci.ids') "Update target drifted to '$target'"
+        Assert-True ((& $m { $script:PciIdsOverride }) -eq $tmp) 'override recorded separately'
+    } finally {
+        & (Get-Module winlspci) { $script:PciIdsOverride = $null }
+        Import-PciIds -Force
+        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+    }
+    Assert-Equal 'Intel Corporation' (Get-PciVendorName '8086') 'bundled database restored'
+}
+
+It 'diff records are sanitised: a hostile baseline cannot rewrite the diff line' {
+    $esc = [char]27
+    $before = New-FakeDevice @{ DeviceName = "OLD${esc}[2K${esc}[1GSPOOFED`rX" }
+    $after = New-FakeDevice @{ DeviceName = 'NEW' }
+    $r = @(Compare-PciDeviceSet -Before @($before) -After @($after))
+    $rec = $r | Where-Object Attribute -eq 'DeviceName'
+    Assert-True ($rec.Was -notmatch '[\x00-\x1f\x7f]') "control characters in Was: $($rec.Was)"
+    $gone = @(Compare-PciDeviceSet -Before @($before) -After @())
+    Assert-True ($gone[0].Was -notmatch '[\x00-\x1f\x7f]') 'Removed record must be sanitised too'
+}
+
+It 'Compare-PciBaseline rejects non-baseline files in its own voice' {
+    $tmp = [IO.Path]::GetTempFileName()
+    try {
+        Set-Content $tmp 'null'
+        Assert-Throws { Compare-PciBaseline -Path $tmp -Device @() } -Like '*does not look like a winlspci baseline*'
+        Set-Content $tmp '{"schemaVersion":"abc","devices":[]}'
+        Assert-Throws { Compare-PciBaseline -Path $tmp -Device @() } -Like '*schemaVersion*not a number*'
+        Set-Content $tmp '{not json'
+        Assert-Throws { Compare-PciBaseline -Path $tmp -Device @() } -Like '*not valid JSON*'
+    } finally { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
 }
 
 It 'Read-PciIdsFile returns empty tables for a file that is not a pci.ids' {
@@ -303,6 +365,19 @@ It 'tigerlake-laptop: the recorded machine replays with link state intact' {
         Assert-Equal '8GT/s' $nvme.LinkSpeed
         Assert-Equal 4 $nvme.LinkWidth
         Assert-Equal '0600' ($devs | Where-Object Slot -eq '00:00.0').ClassCode 'host bridge class via hardware id'
+    }
+}
+
+It 'tigerlake-laptop: prog-if and subsystem vendor names resolve from the recording' {
+    Use-Fixture 'tigerlake-laptop' {
+        $devs = @(Get-PciDevice)
+        $nvme = $devs | Where-Object Slot -eq '01:00.0'
+        Assert-Equal 'NVM Express' $nvme.ProgIfName
+        Assert-Equal 'SK hynix' $nvme.SubsystemVendorName
+        $out = @($nvme | Format-Lspci -Verbosity 1) -join "`n"
+        Assert-True ($out -like '*(prog-if 02 [[]NVM Express])*') "prog-if on the -v line: $out"
+        $hb = $devs | Where-Object Slot -eq '00:00.0'
+        Assert-Equal $null $hb.ProgIfName 'no distinct prog-if entry: null, not the subclass name repeated'
     }
 }
 
@@ -979,6 +1054,123 @@ It 'the static attribute list matches the live object shape exactly' {
     Assert-Equal ($live -join ',') ($static -join ',') 'attribute list drifted from the object'
 }
 
+# ------------------------------------------------------ machine-readable
+
+Write-Host "`nMachine-readable (-m / -mm)"
+
+It '-m is one quoted line per device with lspci quoting; -r00/-p00 and 0000 subsystem omitted as pciutils does' {
+    $fake = New-FakeDevice @{ DeviceName = 'Widget "Pro"'; Revision = '1a'; SubsystemVendorId = '1c5c'; SubsystemId = '174a'; SubsystemVendorName = 'SK hynix'; SubsystemName = $null }
+    $line = @($fake | Format-PciMachine -Mode 1)[0]
+    Assert-Equal '01:00.0 "NVMe" "Test" "Widget \"Pro\"" -r1a -p02 "SK hynix" "Device 174a"' $line
+    $ids = @($fake | Format-PciMachine -Mode 1 -Numeric 1)[0]
+    Assert-True ($ids.StartsWith('01:00.0 "0108" "dead" "beef"')) $ids
+    $zero = New-FakeDevice @{ Revision = '00'; ProgIf = 0; SubsystemVendorId = '0000'; SubsystemId = '0000' }
+    $line = @($zero | Format-PciMachine -Mode 1)[0]
+    Assert-True ($line -notlike '*-r00*' -and $line -notlike '*-p00*') "zero rev/prog-if must be omitted: $line"
+    Assert-True ($line.EndsWith('"" ""')) "no subsystem prints empty quotes: $line"
+    $rec = @($zero | Format-PciMachine -Mode 2) -join "`n"
+    Assert-True ($rec -notlike '*SVendor*' -and $rec -notlike '*Vendor 0000*') "-mm must not invent a 0000 subsystem: $rec"
+}
+
+It 'the pci.ids parser resets nested state at vendor and class boundaries' {
+    # Malformed input (reachable through -i): a two-tab line directly under a
+    # new vendor, and one directly under a new class, must not attach to the
+    # PREVIOUS vendor's device / class's subclass.
+    $tmp = [IO.Path]::GetTempFileName()
+    try {
+        @('1000  Vendor One', "`t0001  Device A", "`t`t1028 1fd2  Card X", '1001  Vendor Two', "`t`t9999 8888  Orphan subsystem",
+          'C 01  Mass storage', "`t08  NVM", "`t`t02  NVM Express", 'C 02  Network', "`t`t05  Orphan prog-if") | Set-Content $tmp -Encoding Ascii
+        $t = Read-PciIdsFile -Path $tmp
+        Assert-Equal 'Card X' $t.Subsystems['1000/0001/10281fd2']
+        Assert-True (-not $t.Subsystems.ContainsKey('1001/0001/99998888')) 'orphan subsystem attached to a stale device'
+        Assert-Equal 'NVM Express' $t.Classes['010802']
+        Assert-True (-not $t.Classes.ContainsKey('020805')) 'orphan prog-if attached to a stale subclass'
+    } finally { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
+}
+
+It '-mm is a record per device, blank-line separated' {
+    $rec = @((New-FakeDevice), (New-FakeDevice @{ Slot = '02:00.0' }) | Format-PciMachine -Mode 2)
+    Assert-True ($rec[0] -eq "Slot:`t01:00.0") $rec[0]
+    Assert-True (($rec | Where-Object { $_ -eq '' }).Count -eq 2) 'two records, two terminating blank lines'
+    Assert-True (($rec | Where-Object { $_ -like 'Slot:*' }).Count -eq 2)
+}
+
+# ------------------------------------------------------ baseline / diff
+
+Write-Host "`nBaseline and diff"
+
+It 'Compare-PciDeviceSet reports added, removed and changed, keeping absent distinct from zero' {
+    $a = New-FakeDevice @{ Slot = '01:00.0'; InstanceId = 'A'; LinkWidth = 4; NumaNode = $null }
+    $b = New-FakeDevice @{ Slot = '02:00.0'; InstanceId = 'B' }
+    $a2 = New-FakeDevice @{ Slot = '01:00.0'; InstanceId = 'A'; LinkWidth = 1; NumaNode = 0 }
+    $c = New-FakeDevice @{ Slot = '03:00.0'; InstanceId = 'C' }
+    $r = @(Compare-PciDeviceSet -Before @($a, $b) -After @($a2, $c))
+    Assert-Equal 1 @($r | Where-Object Change -eq 'Added').Count
+    Assert-Equal '03:00.0' ($r | Where-Object Change -eq 'Added').Slot
+    Assert-Equal 1 @($r | Where-Object Change -eq 'Removed').Count
+    $width = $r | Where-Object { $_.Change -eq 'Changed' -and $_.Attribute -eq 'LinkWidth' }
+    Assert-Equal '4' $width.Was; Assert-Equal '1' $width.Now
+    $numa = $r | Where-Object { $_.Change -eq 'Changed' -and $_.Attribute -eq 'NumaNode' }
+    Assert-Equal '<absent>' $numa.Was 'absent must be named, not shown as empty'
+    Assert-Equal '0' $numa.Now
+    $r2 = @(Compare-PciDeviceSet -Before @($a, $b) -After @($a2, $c) -IgnoreAttribute 'Link*', 'NumaNode')
+    Assert-Equal 0 @($r2 | Where-Object Change -eq 'Changed').Count 'ignored attributes must not be reported'
+    # Volatile: PowerState is ignored by default, compared with -IncludeVolatile.
+    $p0 = New-FakeDevice @{ InstanceId = 'P'; PowerState = 'D0' }
+    $p3 = New-FakeDevice @{ InstanceId = 'P'; PowerState = 'D3' }
+    Assert-Equal 0 @(Compare-PciDeviceSet -Before @($p0) -After @($p3)).Count 'PowerState flip must be ignored by default'
+    Assert-Equal 1 @(Compare-PciDeviceSet -Before @($p0) -After @($p3) -IncludeVolatile).Count
+    # Union of attributes: one the baseline has and "now" lacks is reported.
+    $rich = New-FakeDevice @{ InstanceId = 'U' }
+    $rich | Add-Member -NotePropertyName FutureAttribute -NotePropertyValue 'x'
+    $plain = New-FakeDevice @{ InstanceId = 'U' }
+    $ru = @(Compare-PciDeviceSet -Before @($rich) -After @($plain))
+    Assert-Equal 'FutureAttribute' $ru[0].Attribute 'an attribute only the baseline carries must be reported'
+    Assert-Equal '<absent>' $ru[0].Now
+}
+
+It 'Compare-PciBaseline applies -d / -s selectors to the baseline side too' {
+    Use-Fixture 'tigerlake-laptop' {
+        $tmp = [IO.Path]::GetTempFileName()
+        try {
+            $devs = @(Get-PciDevice)
+            Export-PciBaseline -Path $tmp -Device $devs
+            $nvme = @(Get-PciDevice -Device '1c5c:')
+            $r = @(Compare-PciBaseline -Path $tmp -Device $nvme -DeviceFilter '1c5c:')
+            Assert-Equal 0 $r.Count "filtered both sides should be identical, got $($r.Count) records"
+            $r = @(Compare-PciBaseline -Path $tmp -Device $nvme)   # unfiltered baseline vs filtered now
+            Assert-Equal 23 @($r | Where-Object Change -eq 'Removed').Count 'unfiltered baseline reports the rest as removed'
+        } finally { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+It 'a reseated card (new InstanceId, same slot and ids) is a Changed(InstanceId), not Removed+Added' {
+    $before = New-FakeDevice @{ Slot = '01:00.0'; InstanceId = 'OLD' }
+    $after = New-FakeDevice @{ Slot = '01:00.0'; InstanceId = 'NEW' }
+    $r = @(Compare-PciDeviceSet -Before @($before) -After @($after))
+    Assert-Equal 0 @($r | Where-Object { $_.Change -in 'Added', 'Removed' }).Count
+    Assert-Equal 'InstanceId' ($r | Where-Object Change -eq 'Changed').Attribute
+}
+
+It 'Export-PciBaseline then Compare-PciBaseline round-trips a fixture with no differences' {
+    Use-Fixture 'tigerlake-laptop' {
+        $tmp = [IO.Path]::GetTempFileName()
+        try {
+            $devs = @(Get-PciDevice)
+            Export-PciBaseline -Path $tmp -Device $devs
+            $env = Get-Content $tmp -Raw | ConvertFrom-Json
+            Assert-Equal 1 $env.schemaVersion
+            Assert-Equal 24 $env.count
+            Assert-Equal 0 @(Compare-PciBaseline -Path $tmp -Device $devs).Count 'identical sets differ'
+            $mutated = @($devs | ForEach-Object { if ($_.Slot -eq '01:00.0') { $c = $_.PSObject.Copy(); $c.LinkWidth = 1; $c } else { $_ } } | Select-Object -Skip 1)
+            $r = @(Compare-PciBaseline -Path $tmp -Device $mutated)
+            Assert-Equal 1 @($r | Where-Object Change -eq 'Removed').Count
+            Assert-Equal 'LinkWidth' ($r | Where-Object Change -eq 'Changed').Attribute
+        } finally { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
+    }
+    Assert-Throws { Compare-PciBaseline -Path 'C:\nope\base.json' } -Like '*no such file*'
+}
+
 # ------------------------------------------------------ delimited output
 
 Write-Host "`nDelimited output"
@@ -1092,12 +1284,68 @@ It 'says "not implemented" for -p instead of binding it to -PresentOnly' {
     Assert-True ($r.Text -notlike '*Attribute*Value*Present*') 'must not print the attribute table'
 }
 
-It 'says "not implemented" for -m / -b / -i rather than a binder error' {
-    foreach ($flag in @('-m', '-mm', '-b', '-i', '-M', '-A')) {
+It 'says "not implemented" for -b / -p / -M / -A rather than a binder error' {
+    foreach ($flag in @('-b', '-p', '-M', '-A', '-H1')) {
         $r = Invoke-Cli @($flag)
         Assert-Equal 2 $r.Code "$flag exit was $($r.Code): $($r.Text)"
         Assert-True ($r.Text -like '*not implemented*') "$flag : $($r.Text)"
     }
+}
+
+It 'CLI: -m, -mm and -i are implemented; -mm with -Json is refused' {
+    $r = Invoke-Cli @('-m', '-s', $sampleSlot)
+    Assert-Equal 0 $r.Code $r.Text
+    Assert-True ($r.Output[0] -match '^\S+ ".*" ".*" ".*"') "-m shape: $($r.Output[0])"
+    $r = Invoke-Cli @('-mm', '-s', $sampleSlot)
+    Assert-Equal 0 $r.Code $r.Text
+    Assert-True ($r.Output[0] -like "Slot:*$sampleSlot") "-mm shape: $($r.Output[0])"
+    $r = Invoke-Cli @('-mm', '-Json')
+    Assert-Equal 64 $r.Code 'conflicting formats'
+    $r = Invoke-Cli @('-i', (Join-Path $root 'data\pci.ids'), '-s', $sampleSlot)
+    Assert-Equal 0 $r.Code $r.Text
+    $r = Invoke-Cli @('-i', 'C:\nope.ids')
+    Assert-Equal 64 $r.Code 'missing ids file is a usage error'
+}
+
+It 'CLI: -Baseline then -Diff is exit 0 when nothing changed and 3 when it did' {
+    $tmp = [IO.Path]::GetTempFileName()
+    try {
+        $r = Invoke-Cli @('-Baseline', $tmp)
+        Assert-Equal 0 $r.Code $r.Text
+        # PowerState is volatile and ignored by default, so a same-machine
+        # round trip is clean.
+        $r = Invoke-Cli @('-Diff', $tmp)
+        Assert-Equal 0 $r.Code "identical diff: $($r.Text)"
+        Assert-True ($r.Text -like '*no differences*') $r.Text
+        # A selector applies to both sides: the sample device against itself.
+        $r = Invoke-Cli @('-Diff', $tmp, '-s', $sampleSlot)
+        Assert-Equal 0 $r.Code "filtered diff of one device against itself: $($r.Text)"
+        # A selector matching nothing is still "no matching PCI device", exit 1.
+        $r = Invoke-Cli @('-Diff', $tmp, '-d', 'ffff:')
+        Assert-Equal 1 $r.Code "empty filter must be exit 1, not everything-gone: $($r.Text)"
+        # A baseline that LACKS a device now present -> Added, exit 3.
+        $base = Get-Content $tmp -Raw | ConvertFrom-Json
+        $base.devices = @($base.devices | Select-Object -Skip 1)
+        $base | ConvertTo-Json -Depth 6 | Set-Content $tmp -Encoding UTF8
+        $r = Invoke-Cli @('-Diff', $tmp)
+        Assert-Equal 3 $r.Code "diff with an added device must exit 3: $($r.Text)"
+        Assert-True (@($r.Output | Where-Object { $_ -like '+ *appeared:*' }).Count -eq 1) $r.Text
+        $r = Invoke-Cli @('-Diff', $tmp, '-Json')
+        Assert-Equal 3 $r.Code
+        Assert-Equal 1 @($r.Text | ConvertFrom-Json).Count
+        $r = Invoke-Cli @('-Diff', 'C:\nope\base.json')
+        Assert-Equal 64 $r.Code
+    } finally { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
+}
+
+It 'CLI: -Watch validates its interval and stops after -Iterations' {
+    $r = Invoke-Cli @('-Watch', 'x')
+    Assert-Equal 64 $r.Code $r.Text
+    $r = Invoke-Cli @('-Watch', '0')
+    Assert-Equal 64 $r.Code '-Watch 0 is not an interval'
+    $r = Invoke-Cli @('-Watch', '1', '-Iterations', '1')
+    Assert-True ($r.Code -in 0, 3) "watch exit $($r.Code): $($r.Text)"
+    Assert-True ($r.Output[0] -like '*watching*devices every 1s*') $r.Output[0]
 }
 
 It 'rejects an unknown option with a usage error, not a warning and an unfiltered listing' {

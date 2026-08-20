@@ -10,9 +10,9 @@
     FunctionsToExport = @(
         'Get-PciDevice', 'Format-Lspci', 'Format-PciTree',
         'ConvertTo-PciAttributeRecord', 'Get-PciAttributeName',
-        'Format-PciDelimited', 'Update-PciIds',
-        'Get-PciVendorName', 'Get-PciDeviceName', 'Get-PciClassName',
-        'Import-PciIds', 'Read-PciIdsFile'
+        'Format-PciDelimited', 'Format-PciMachine', 'Update-PciIds',
+        'Get-PciVendorName', 'Get-PciDeviceName', 'Get-PciSubsystemName', 'Get-PciClassName',
+        'Import-PciIds', 'Read-PciIdsFile', 'Export-PciBaseline', 'Compare-PciBaseline', 'Compare-PciDeviceSet'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()

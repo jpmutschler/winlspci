@@ -26,8 +26,10 @@
 Set-StrictMode -Version 2.0
 
 $script:PciIdsPath = Join-Path $PSScriptRoot 'data\pci.ids'
+$script:PciIdsOverride = $null     # Import-PciIds -Path (lspci -i); Update-PciIds ignores it
 $script:VendorNames = $null
 $script:DeviceNames = $null
+$script:SubsystemNames = $null
 $script:ClassNames = $null
 
 # PCIe link speed is reported as an enum, not GT/s. Getting this mapping wrong
@@ -52,6 +54,6 @@ foreach ($dir in 'Private', 'Public') {
 
 Export-ModuleMember -Function Get-PciDevice, Format-Lspci, Format-PciTree,
     ConvertTo-PciAttributeRecord, Get-PciAttributeName,
-    Format-PciDelimited, Update-PciIds,
-    Get-PciVendorName, Get-PciDeviceName, Get-PciClassName, Import-PciIds,
-    Read-PciIdsFile
+    Format-PciDelimited, Format-PciMachine, Update-PciIds,
+    Get-PciVendorName, Get-PciDeviceName, Get-PciSubsystemName, Get-PciClassName, Import-PciIds,
+    Read-PciIdsFile, Export-PciBaseline, Compare-PciBaseline, Compare-PciDeviceSet

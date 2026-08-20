@@ -3,10 +3,14 @@ function Read-PciIdsFile {
     .SYNOPSIS
       Parse a pci.ids file into vendor, device and class lookup tables.
     .DESCRIPTION
-      Pure function of the file: returns a hashtable with Vendors, Devices and
-      Classes. Import-PciIds uses it to populate the session cache, and
-      Update-PciIds uses it to prove a downloaded file actually parses before
-      the bundled copy is replaced.
+      Pure function of the file: returns a hashtable with Vendors, Devices,
+      Subsystems and Classes. Import-PciIds uses it to populate the session
+      cache, and Update-PciIds uses it to prove a downloaded file actually
+      parses before the bundled copy is replaced.
+
+      Keys:  Vendors["8086"]                    Devices["1c5c/174a"]
+             Subsystems["1c5c/174a/1c5c174a"]  (vendor/device/subvendor+subdevice)
+             Classes["01"], Classes["0108"], Classes["010802"] (base, +sub, +prog-if)
     #>
     param([Parameter(Mandatory)][string]$Path)
 
@@ -20,10 +24,13 @@ function Read-PciIdsFile {
 
     $vendors = @{}
     $devices = @{}
+    $subsystems = @{}
     $classes = @{}
 
     $currentVendor = $null
+    $currentDevice = $null
     $currentClass = $null
+    $currentSubClass = $null
     $inClassSection = $false
 
     foreach ($line in [System.IO.File]::ReadLines($resolved)) {
@@ -31,7 +38,12 @@ function Read-PciIdsFile {
 
         if ($line[0] -eq 'C' -and $line.Length -gt 2 -and $line[1] -eq ' ') {
             # "C 03  Display controller" begins the device-class section.
+            # Reset the nested state: a two-tab line directly under a class
+            # header (malformed, but -i makes hand-edited files reachable)
+            # must not attach to the previous class's subclass.
             $inClassSection = $true
+            $currentSubClass = $null
+            $currentVendor = $null; $currentDevice = $null
             $body = $line.Substring(2)
             $sep = $body.IndexOf('  ')
             if ($sep -gt 0) {
@@ -45,6 +57,7 @@ function Read-PciIdsFile {
             $sep = $line.IndexOf('  ')
             if ($sep -gt 0) {
                 $currentVendor = $line.Substring(0, $sep)
+                $currentDevice = $null      # a subsystem line needs a device under THIS vendor
                 $vendors[$currentVendor] = $line.Substring($sep + 2)
                 $inClassSection = $false
             }
@@ -52,8 +65,10 @@ function Read-PciIdsFile {
         }
 
         # Single-tab entries are devices (or subclasses inside the C section).
-        # Two-tab entries are subsystems, which we do not index -- they would
-        # triple the memory for a field almost nobody reads.
+        # Two-tab entries are subsystems (or prog-ifs inside the C section).
+        # Subsystems were skipped until 0.5.0 to save memory; measured, the
+        # whole database is a few MB in tables, and "Subsystem: Dell PERC
+        # H740P" beats a bare id for the people who read that line.
         if ($line.Length -gt 1 -and $line[1] -ne "`t") {
             $body = $line.TrimStart("`t")
             $sep = $body.IndexOf('  ')
@@ -61,14 +76,28 @@ function Read-PciIdsFile {
             $id = $body.Substring(0, $sep)
             $name = $body.Substring($sep + 2)
             if ($inClassSection) {
-                if ($currentClass) { $classes["$currentClass$id"] = $name }
+                if ($currentClass) { $currentSubClass = $id; $classes["$currentClass$id"] = $name }
             } elseif ($currentVendor) {
+                $currentDevice = $id
                 $devices["$currentVendor/$id"] = $name
+            }
+        } elseif ($line.Length -gt 2 -and $line[1] -eq "`t") {
+            $body = $line.TrimStart("`t")
+            $sep = $body.IndexOf('  ')
+            if ($sep -le 0) { continue }
+            $id = $body.Substring(0, $sep)
+            $name = $body.Substring($sep + 2)
+            if ($inClassSection) {
+                if ($currentClass -and $currentSubClass) { $classes["$currentClass$currentSubClass$id"] = $name }
+            } elseif ($currentVendor -and $currentDevice) {
+                # "\t\t1c5c 174a  Gold P31" -> key vendor/device/1c5c174a.
+                # String.Replace, not -replace: 18k regex calls cost ~150ms.
+                $subsystems["$currentVendor/$currentDevice/$($id.Replace(' ', ''))"] = $name
             }
         }
     }
 
-    return @{ Vendors = $vendors; Devices = $devices; Classes = $classes }
+    return @{ Vendors = $vendors; Devices = $devices; Subsystems = $subsystems; Classes = $classes }
 }
 
 
@@ -81,29 +110,49 @@ function Import-PciIds {
       once per session but not once per device, hence the module-scope cache.
     #>
     [CmdletBinding()]
-    param([switch]$Force)
+    param(
+        [switch]$Force,
+        # An alternate pci.ids (lspci -i). Sticks for the session.
+        [string]$Path
+    )
+
+    # The -i override lives in its own variable. $script:PciIdsPath stays the
+    # bundled data\pci.ids, which is what Update-PciIds writes to -- so a
+    # curated ids file loaded with -Path can never be overwritten by a later
+    # refresh in the same session.
+    if ($Path) {
+        $resolved = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
+        if (-not (Test-Path -LiteralPath $resolved -PathType Leaf)) { throw "Import-PciIds: no such file '$Path'" }
+        $script:PciIdsOverride = $resolved
+        $Force = $true
+    }
 
     if ($null -ne $script:VendorNames -and -not $Force) { return }
 
     $script:VendorNames = @{}
     $script:DeviceNames = @{}
+    $script:SubsystemNames = @{}
     $script:ClassNames = @{}
 
-    if (-not (Test-Path $script:PciIdsPath)) {
-        Write-Verbose "no pci.ids at $script:PciIdsPath; IDs will render as hex only"
+    $source = $script:PciIdsPath
+    if ($script:PciIdsOverride) { $source = $script:PciIdsOverride }
+
+    if (-not (Test-Path $source)) {
+        Write-Verbose "no pci.ids at $source; IDs will render as hex only"
         return
     }
 
     # Present but unreadable (ACL, lock) degrades to hex-only output, as the
     # missing-file case does, rather than failing the whole listing.
     try {
-        $tables = Read-PciIdsFile -Path $script:PciIdsPath
+        $tables = Read-PciIdsFile -Path $source
     } catch {
-        Write-Warning "could not read $script:PciIdsPath ($($_.Exception.Message)); IDs will render as hex only"
+        Write-Warning "could not read $source ($($_.Exception.Message)); IDs will render as hex only"
         return
     }
     $script:VendorNames = $tables.Vendors
     $script:DeviceNames = $tables.Devices
+    $script:SubsystemNames = $tables.Subsystems
     $script:ClassNames = $tables.Classes
 }
 
@@ -131,20 +180,52 @@ function Get-PciDeviceName {
 }
 
 
+function Get-PciSubsystemName {
+    <#
+    .SYNOPSIS
+      The pci.ids name for a device's subsystem (vendor+device pair), or $null.
+    .DESCRIPTION
+      Subsystem names are indexed under the device they belong to, as the
+      database nests them: the same 1028:1fd2 means different cards under
+      different chips.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$VendorId,
+        [Parameter(Mandatory)][string]$DeviceId,
+        [Parameter(Mandatory)][string]$SubsystemVendorId,
+        [Parameter(Mandatory)][string]$SubsystemId
+    )
+    Import-PciIds
+    $key = "$($VendorId.ToLower())/$($DeviceId.ToLower())/$($SubsystemVendorId.ToLower())$($SubsystemId.ToLower())"
+    if ($script:SubsystemNames.ContainsKey($key)) { return $script:SubsystemNames[$key] }
+    return $null
+}
+
+
 function Get-PciClassName {
     <#
     .SYNOPSIS
       Class name from base/sub class bytes, falling back to the base class.
+    .PARAMETER ProgIf
+      With -ProgIf, the programming-interface name when pci.ids has one
+      ("NVM Express", "AHCI 1.0", "XHCI"); lspci appends it in -vv. Falls back
+      to the subclass name when the database has no prog-if entry.
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][int]$BaseClass,
-        [int]$SubClass = -1
+        [int]$SubClass = -1,
+        [int]$ProgIf = -1
     )
     Import-PciIds
     $base = '{0:x2}' -f $BaseClass
     if ($SubClass -ge 0) {
         $key = "$base{0:x2}" -f $SubClass
+        if ($ProgIf -ge 0) {
+            $pkey = "$key{0:x2}" -f $ProgIf
+            if ($script:ClassNames.ContainsKey($pkey)) { return $script:ClassNames[$pkey] }
+        }
         if ($script:ClassNames.ContainsKey($key)) { return $script:ClassNames[$key] }
     }
     if ($script:ClassNames.ContainsKey($base)) { return $script:ClassNames[$base] }

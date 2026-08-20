@@ -40,7 +40,27 @@ object shape may still change between minors (and says so here when it does).
   idle power management, not a fault"* — which is the README's own GPU
   example, now explained by the tool.
 - The property fetch asks for 17 more DEVPKEYs; measured at ~+300 ms on a
-  24-device laptop (each key ~1.4 ms per device).
+  24-device laptop (each key ~0.9 ms per device plus ~14 ms fixed per call).
+- **Subsystem and prog-if names** from pci.ids: `SubsystemVendorName`,
+  `SubsystemName` (`Subsystem: SK hynix Gold P31 [1c5c:174a]`), `ProgIfName`
+  (`(prog-if 02 [NVM Express])` on the `-v` line); `Get-PciSubsystemName`,
+  `Get-PciClassName -ProgIf`, `Read-PciIdsFile` now returns `Subsystems`.
+  Parse is ~110 ms (was ~50) for ~18k subsystem entries.
+- **`-m` / `-mm`** machine-readable output (`Format-PciMachine`), quoted and
+  escaped as lspci does; **`-i <file>`** alternate `pci.ids`
+  (`Import-PciIds -Path`). Both removed from the not-implemented list.
+- **Baseline and diff**: `Export-PciBaseline`, `Compare-PciBaseline`,
+  `Compare-PciDeviceSet`; CLI `-Baseline <file>`, `-Diff <file>`
+  (`-IgnoreAttribute`, `PowerState` ignored unless `-IncludeVolatile`, exit 3
+  on differences, `-Json`/`-Csv`/`-Delimited` forms, `-d`/`-s` applied to
+  both sides, attributes compared as the union of both sides). Reseated
+  cards match by slot+ids; absent vs zero survives as `<absent> -> 0`.
+  Diff values are sanitised at record build (a baseline is untrusted input).
+- `-m` omits `-r00`/`-p00` and prints `"" ""` for no subsystem, as pciutils
+  does; `ClassName` is sanitised like every other name; `Import-PciIds -Path`
+  keeps the override separate from the file `Update-PciIds` writes.
+- **`-Watch <seconds>`** (`-Iterations <n>`): re-enumerate and print only
+  timestamped changes; exit 3 if anything changed.
 - `-Json` envelope carries `schemaVersion` (1), `winlspciVersion`,
   `generatedAt` (UTC) and `computerName`. Additive changes keep the schema
   version; a rename or change of meaning bumps it.
