@@ -2,7 +2,7 @@
 
 `lspci` for Windows, without a kernel driver.
 
-Source and issues: <https://github.com/jpmutschler/winlspci> · [User's Manual (PDF)](docs/winlspci%20Users%20Manual%20v1.1.pdf) · MIT · Windows PowerShell 5.1 · [![tests](https://github.com/jpmutschler/winlspci/actions/workflows/tests.yml/badge.svg)](https://github.com/jpmutschler/winlspci/actions/workflows/tests.yml)
+Source and issues: <https://github.com/jpmutschler/winlspci> · [User's Manual (PDF)](docs/winlspci%20Users%20Manual%20v1.2.pdf) · MIT · Windows PowerShell 5.1 · [![tests](https://github.com/jpmutschler/winlspci/actions/workflows/tests.yml/badge.svg)](https://github.com/jpmutschler/winlspci/actions/workflows/tests.yml)
 
 ```
 PS> lspci -nn
