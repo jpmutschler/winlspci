@@ -2,7 +2,7 @@
 
 `lspci` for Windows, without a kernel driver.
 
-Source and issues: <https://github.com/jpmutschler/winlspci> · [User's Manual (PDF)](docs/winlspci%20Users%20Manual%20v1.1.pdf) · MIT · Windows PowerShell 5.1
+Source and issues: <https://github.com/jpmutschler/winlspci> · [User's Manual (PDF)](docs/winlspci%20Users%20Manual%20v1.1.pdf) · MIT · Windows PowerShell 5.1 · [![tests](https://github.com/jpmutschler/winlspci/actions/workflows/tests.yml/badge.svg)](https://github.com/jpmutschler/winlspci/actions/workflows/tests.yml)
 
 ```
 PS> lspci -nn
@@ -387,11 +387,36 @@ Windows PowerShell hosts. The bundled copy is dated in `lspci -Version`.
 
 ---
 
+## Layout
+
+```
+winlspci.psd1            manifest (exports, version, release notes)
+winlspci.psm1            loader: module state, then dot-sources Private\ and Public\
+Public\                  exported functions, one file per function or cohesive group
+  Get-PciDevice.ps1        enumeration and the device object shape
+  Format-Lspci.ps1         lspci-style text
+  Format-PciTree.ps1       -t
+  Attributes.ps1           ConvertTo-PciAttributeRecord, Get-PciAttributeName
+  Format-PciDelimited.ps1  -Delimited
+  PciIds.ps1               pci.ids parse, lookups, Update-PciIds
+Private\                 internal helpers
+  DeviceProperties.ps1     DEVPKEY fetch, BDF, class-from-hardware-id
+  Selectors.ps1            -s and -d parsing
+  Helpers.ps1              downtrain test, StrictMode-safe field access, text sanitising
+bin\lspci.cmd / .ps1     the command-line front end and its argument parser
+data\pci.ids             bundled PCI ID database
+tests\Invoke-Tests.ps1   the suite (no Pester)
+```
+
 ## Tests
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tests\Invoke-Tests.ps1
 ```
+
+The same suite runs on every push under Windows PowerShell 5.1 on a GitHub
+`windows-latest` runner (`.github/workflows/tests.yml`) — a different machine
+with a different PCI inventory, which is the point.
 
 No Pester required, deliberately: stock Windows ships Pester 3.4.0, whose
 `Should Be` syntax is incompatible with Pester 5's `Should -Be`, so a Pester

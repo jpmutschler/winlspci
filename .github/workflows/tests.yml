@@ -1,0 +1,32 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  windows-powershell-5-1:
+    # The target is the PowerShell that ships with Windows, so the suite runs
+    # under powershell.exe (5.1) via cmd -- not the pwsh 7 that GitHub's
+    # `shell: pwsh` would give. Hosted runners are Hyper-V VMs with a small PCI
+    # inventory; hardware-dependent tests take their samples from whatever the
+    # machine has and skip with a reason where it has nothing suitable.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Windows PowerShell version
+        shell: cmd
+        run: powershell.exe -NoProfile -Command "$PSVersionTable.PSVersion.ToString()"
+
+      - name: What the runner's PCI bus looks like
+        shell: cmd
+        continue-on-error: true
+        run: |
+          bin\lspci.cmd -nn
+          bin\lspci.cmd -t
+
+      - name: Run the test suite
+        shell: cmd
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\Invoke-Tests.ps1
