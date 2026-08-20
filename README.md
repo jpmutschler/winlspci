@@ -41,7 +41,7 @@ PCI bus driver from config space at enumeration time.
 |---|---|
 | Presence, vendor / device / subsystem IDs, revision | `lspci -x` config-space hex dumps |
 | Class / subclass / prog-if, with names | Capability structure walks |
-| `bus:device.function` | ASPM state, LTR, DPC |
+| `[domain:]bus:device.function` — the PCI segment too, where Windows reports one (Hyper-V / Azure) | ASPM state, LTR, DPC |
 | **Negotiated *and* maximum** link speed and width | AER register detail (presence only) |
 | MPS, MRRS | Anything requiring a live register read |
 | Driver binding and version, device status / problem code | |
@@ -118,7 +118,7 @@ Measured against Linux `lspci`, not aspirational.
 
 | lspci | winlspci | Notes |
 |---|---|---|
-| `-s [[<dom>]:]<bus>:]<dev>[.<fn>]` | `-s` | lspci's grammar, every field optional: `01:` (bus), `01:00.0`, `1` (**device** 01 on any bus), `.0` (every function 0), `:00.0`, `0000:01:00.0`. Padded or unpadded |
+| `-s [[<dom>]:]<bus>:]<dev>[.<fn>]` | `-s` | lspci's grammar, every field optional: `01:` (bus), `01:00.0`, `1` (**device** 01 on any bus), `.0` (every function 0), `:00.0`, `0000:01:00.0`. Padded or unpadded. A selector without a domain matches every domain; `556f:00:02.0` only that one |
 | `-d [<ven>]:[<dev>][:<class>]` | `-d` | Vendor and device are exact hex IDs (`-d 80:` is vendor `0080`, not every `80xx`); class is a prefix (`::01` = all storage). `-d 11f8:`, `-d :174a`, `-d ::0108` |
 | `-t` | `-t` | Real topology, from `DEVPKEY_Device_Parent`. Shows link state inline |
 | `-v` | `-v` | Link state (current **and** max), driver, status |
@@ -302,6 +302,42 @@ field by field, so `1:` and `01:` agree, `-s 1` means device 01 on any bus
 `:00.0` work. `-d` compares vendor and device as hex numbers, so `-d 8:`
 no longer quietly returns every Intel device. Anything that is not hex is one
 clear error, not a .NET exception per device.
+
+---
+
+## PCI domains (segments)
+
+On an ordinary machine every device is in domain `0000`, the slot is
+`bus:device.function`, and `-D` is the only way to see the domain — exactly
+as in lspci. The exception is virtualised hardware. **Hyper-V and Azure
+report SR-IOV functions on a "bus" that is really segment and bus packed
+together**: Windows says `PCI bus 5598976`, which is `0x556F00` — a PCI bus
+is 8 bits wide, so the upper bits are the segment. An earlier version printed
+that as bus `556f00`, a slot nothing could parse; the first CI run on a GitHub
+Windows runner (an Azure VM with one Mellanox ConnectX-4 virtual function)
+found it.
+
+Now the bus number is split into the **`Domain`** property (upper 16 bits)
+and the bus (low 8), and — as lspci does — a non-zero domain is always shown
+in the slot:
+
+```
+PS> lspci -nn                       # on an Azure VM
+3851:00:00.0 Non-Volatile memory controller [0108]: Microsoft Corporation Standard NVM Express Controller [1414:b111] (rev 01)
+7870:00:00.0 Ethernet controller [0200]: Microsoft Corporation Microsoft Azure Network Adapter Virtual Bus [1414:00ba] (rev 00)
+c05b:00:00.0 Non-Volatile memory controller [0108]: Microsoft Corporation ASAP NVM Express Controller [1414:00a9] (rev 00)
+```
+
+- `Slot` is `[dddd:]bb:dd.f`; `Domain` is an integer (`0` normally) and is
+  one of the queryable attributes (`lspci -Attribute Domain`).
+- `-s` without a domain matches every domain (`-s 00:00.0` finds all three
+  above); `-s 7870:00:00.0` finds one; a domain nobody is in matches nothing
+  and exits 1.
+- `-D` prefixes `0000:` only where the slot has no domain already — it never
+  produces `0000:7870:…`.
+- Sorting is by the full slot string, so devices group by domain.
+- Which domains exist is Windows' decision; the numbers are the same ones
+  Linux `lspci` shows on the same VM.
 
 ---
 
