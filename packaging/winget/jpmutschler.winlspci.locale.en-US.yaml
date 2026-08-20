@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+PackageIdentifier: jpmutschler.winlspci
+PackageVersion: 0.5.0
+PackageLocale: en-US
+Publisher: Joshua Mutschler
+PublisherUrl: https://github.com/jpmutschler
+PublisherSupportUrl: https://github.com/jpmutschler/winlspci/issues
+PackageName: winlspci
+PackageUrl: https://github.com/jpmutschler/winlspci
+License: MIT
+LicenseUrl: https://github.com/jpmutschler/winlspci/blob/main/LICENSE
+Copyright: (c) Joshua Mutschler. MIT. pci.ids (c) The PCI ID Project, BSD/GPL.
+ShortDescription: lspci for Windows, without a kernel driver
+Description: |-
+  Reads Windows' own PnP/PCI enumeration for identity, class, bus:device.function,
+  negotiated and maximum link speed and width, MPS/MRRS, driver binding, device
+  type, capability presence, power state and topology -- and says plainly what it
+  cannot report without a kernel driver (config-space dumps, capability contents).
+  Requires Windows PowerShell 5.1, which ships with Windows.
+Moniker: winlspci
+Tags:
+  - pci
+  - pcie
+  - lspci
+  - hardware
+  - diagnostics
+  - powershell
+ReleaseNotesUrl: https://github.com/jpmutschler/winlspci/blob/main/CHANGELOG.md
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

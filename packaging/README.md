@@ -76,14 +76,22 @@ silently disables integrity checking on the download.
 
 ## 4. winget
 
-A winget manifest needs a versioned installer URL and SHA-256, i.e. the same
-archive and hash as scoop, in the `Microsoft.WinGet.CreateManifest` three-file
-layout (version / installer / default-locale) under
+`packaging/winget/` holds the three-file manifest for the current version
+(version / installer / default-locale) with the tag archive's SHA-256 filled
+in: `InstallerType: zip`, a `portable` nested installer for `bin\lspci.cmd`
+aliased `lspci`. To publish, copy them to
 `manifests/j/jpmutschler/winlspci/<version>/` in a fork of
-`microsoft/winget-pkgs`. `wingetcreate new <zip-url>` generates the skeleton;
-the `InstallerType` is `zip` with a `portable` nested installer for
-`bin\lspci.cmd`. Not committed here because the files are generated per
-version and reviewed in that repository, not this one.
+`microsoft/winget-pkgs`, validate with `winget validate --manifest <dir>`
+(or `wingetcreate submit`), and open the PR there. Per release: bump
+`PackageVersion`, the `InstallerUrl` tag, the `RelativeFilePath` folder name,
+and recompute `InstallerSha256`.
+
+## 4b. GitHub release
+
+`gh release create v<version> <winlspci-<version>-module.zip> --verify-tag
+--notes-file <CHANGELOG section>` — the attached zip is `dist\winlspci`
+compressed (`Compress-Archive -Path .\dist\winlspci`), i.e. the single-file
+build; the source archive of the tag is what scoop/winget install.
 
 ## 5. Authenticode (optional, not yet done)
 
@@ -108,6 +116,7 @@ editing the manifest afterwards invalidates its signature.
 - [ ] `tests\Invoke-Tests.ps1` green locally and in CI
 - [ ] `packaging\Build-Module.ps1 -OutputDirectory .\dist` and import the result once
 - [ ] tag, push the tag
-- [ ] `Publish-Module`
-- [ ] scoop manifest hash, winget manifest
+- [ ] GitHub release with the module zip attached (§4b)
+- [ ] `Publish-Module` from `dist\winlspci`
+- [ ] scoop manifest hash (§3), winget manifests in `packaging/winget/` (§4)
 - [ ] README: confirm the install section still describes the easiest path

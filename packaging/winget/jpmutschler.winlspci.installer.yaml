@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+# The installer is the GitHub source archive for the tag (no build step; the
+# module runs from a directory). Portable: bin\lspci.cmd becomes `lspci`.
+# InstallerSha256 is the SHA-256 of the v0.5.0 archive -- recompute per tag.
+PackageIdentifier: jpmutschler.winlspci
+PackageVersion: 0.5.0
+InstallerType: zip
+NestedInstallerType: portable
+NestedInstallerFiles:
+  - RelativeFilePath: winlspci-0.5.0\bin\lspci.cmd
+    PortableCommandAlias: lspci
+Installers:
+  - Architecture: neutral
+    InstallerUrl: https://github.com/jpmutschler/winlspci/archive/refs/tags/v0.5.0.zip
+    InstallerSha256: 687AC60DBC455CBC735B427A42F3DAC7B78411FC842E9C321D4A09A12CD22629
+ManifestType: installer
+ManifestVersion: 1.6.0
