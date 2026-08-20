@@ -1,2 +1,3 @@
 *.tmp
 data/pci.ids.tmp
+data/pci.ids.bak

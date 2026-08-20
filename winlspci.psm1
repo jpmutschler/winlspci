@@ -41,12 +41,86 @@ $script:LinkSpeed = @{
 $script:PayloadSize = @{ 0 = 128; 1 = 256; 2 = 512; 3 = 1024; 4 = 2048; 5 = 4096 }
 
 
+function Read-PciIdsFile {
+    <#
+    .SYNOPSIS
+      Parse a pci.ids file into vendor, device and class lookup tables.
+    .DESCRIPTION
+      Pure function of the file: returns a hashtable with Vendors, Devices and
+      Classes. Import-PciIds uses it to populate the session cache, and
+      Update-PciIds uses it to prove a downloaded file actually parses before
+      the bundled copy is replaced.
+    #>
+    param([Parameter(Mandatory)][string]$Path)
+
+    # Resolve against the PowerShell location, not the process CWD (they
+    # differ in a normal session), and fail in a sentence rather than a
+    # MethodInvocationException.
+    $resolved = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
+    if (-not (Test-Path -LiteralPath $resolved -PathType Leaf)) {
+        throw "Read-PciIdsFile: no such file '$Path'"
+    }
+
+    $vendors = @{}
+    $devices = @{}
+    $classes = @{}
+
+    $currentVendor = $null
+    $currentClass = $null
+    $inClassSection = $false
+
+    foreach ($line in [System.IO.File]::ReadLines($resolved)) {
+        if ($line.Length -eq 0 -or $line[0] -eq '#') { continue }
+
+        if ($line[0] -eq 'C' -and $line.Length -gt 2 -and $line[1] -eq ' ') {
+            # "C 03  Display controller" begins the device-class section.
+            $inClassSection = $true
+            $body = $line.Substring(2)
+            $sep = $body.IndexOf('  ')
+            if ($sep -gt 0) {
+                $currentClass = $body.Substring(0, $sep)
+                $classes[$currentClass] = $body.Substring($sep + 2)
+            }
+            continue
+        }
+
+        if ($line[0] -ne "`t") {
+            $sep = $line.IndexOf('  ')
+            if ($sep -gt 0) {
+                $currentVendor = $line.Substring(0, $sep)
+                $vendors[$currentVendor] = $line.Substring($sep + 2)
+                $inClassSection = $false
+            }
+            continue
+        }
+
+        # Single-tab entries are devices (or subclasses inside the C section).
+        # Two-tab entries are subsystems, which we do not index -- they would
+        # triple the memory for a field almost nobody reads.
+        if ($line.Length -gt 1 -and $line[1] -ne "`t") {
+            $body = $line.TrimStart("`t")
+            $sep = $body.IndexOf('  ')
+            if ($sep -le 0) { continue }
+            $id = $body.Substring(0, $sep)
+            $name = $body.Substring($sep + 2)
+            if ($inClassSection) {
+                if ($currentClass) { $classes["$currentClass$id"] = $name }
+            } elseif ($currentVendor) {
+                $devices["$currentVendor/$id"] = $name
+            }
+        }
+    }
+
+    return @{ Vendors = $vendors; Devices = $devices; Classes = $classes }
+}
+
+
 function Import-PciIds {
     <#
     .SYNOPSIS
       Load and index the PCI ID database. Cached for the session.
     .DESCRIPTION
-      A full parse of the ~38k-line database takes about 170ms, which is fine
+      A full parse of the ~38k-line database takes about 50ms, which is fine
       once per session but not once per device, hence the module-scope cache.
     #>
     [CmdletBinding()]
@@ -63,51 +137,17 @@ function Import-PciIds {
         return
     }
 
-    $currentVendor = $null
-    $currentClass = $null
-    $inClassSection = $false
-
-    foreach ($line in [System.IO.File]::ReadLines($script:PciIdsPath)) {
-        if ($line.Length -eq 0 -or $line[0] -eq '#') { continue }
-
-        if ($line[0] -eq 'C' -and $line.Length -gt 2 -and $line[1] -eq ' ') {
-            # "C 03  Display controller" begins the device-class section.
-            $inClassSection = $true
-            $body = $line.Substring(2)
-            $sep = $body.IndexOf('  ')
-            if ($sep -gt 0) {
-                $currentClass = $body.Substring(0, $sep)
-                $script:ClassNames[$currentClass] = $body.Substring($sep + 2)
-            }
-            continue
-        }
-
-        if ($line[0] -ne "`t") {
-            $sep = $line.IndexOf('  ')
-            if ($sep -gt 0) {
-                $currentVendor = $line.Substring(0, $sep)
-                $script:VendorNames[$currentVendor] = $line.Substring($sep + 2)
-                $inClassSection = $false
-            }
-            continue
-        }
-
-        # Single-tab entries are devices (or subclasses inside the C section).
-        # Two-tab entries are subsystems, which we do not index -- they would
-        # triple the memory for a field almost nobody reads.
-        if ($line.Length -gt 1 -and $line[1] -ne "`t") {
-            $body = $line.TrimStart("`t")
-            $sep = $body.IndexOf('  ')
-            if ($sep -le 0) { continue }
-            $id = $body.Substring(0, $sep)
-            $name = $body.Substring($sep + 2)
-            if ($inClassSection) {
-                if ($currentClass) { $script:ClassNames["$currentClass$id"] = $name }
-            } elseif ($currentVendor) {
-                $script:DeviceNames["$currentVendor/$id"] = $name
-            }
-        }
+    # Present but unreadable (ACL, lock) degrades to hex-only output, as the
+    # missing-file case does, rather than failing the whole listing.
+    try {
+        $tables = Read-PciIdsFile -Path $script:PciIdsPath
+    } catch {
+        Write-Warning "could not read $script:PciIdsPath ($($_.Exception.Message)); IDs will render as hex only"
+        return
     }
+    $script:VendorNames = $tables.Vendors
+    $script:DeviceNames = $tables.Devices
+    $script:ClassNames = $tables.Classes
 }
 
 
@@ -272,56 +312,238 @@ function ConvertTo-Bdf {
 
 
 
-function ConvertTo-NormalisedSlot {
+function Get-ClassFromHardwareId {
     <#
     .SYNOPSIS
-      Zero-pad an lspci-style slot so '1:0.0' and '01:00.0' compare equal.
+      Class code from the PnP hardware IDs, for devices that report no
+      DEVPKEY_PciDevice_BaseClass.
     .DESCRIPTION
-      lspci accepts unpadded bus and device numbers. Ours previously compared
-      the raw string, so `-s 1:` silently matched NOTHING while `-s 01:`
-      matched -- a filter that returns an empty list when the device is right
-      there is exactly the kind of quiet wrong answer worth failing loudly on.
+      The host bridge on a typical machine carries no BaseClass/SubClass
+      property at all, yet its hardware IDs include
+      "PCI\VEN_8086&DEV_9A14&CC_060000". Windows derives that CC_ token from
+      the same config-space class register, so it is an equally authoritative
+      source and costs nothing extra -- HardwareID is already on the
+      Win32_PnPEntity instance. Without it, "no class reported" and "class 00"
+      collapse into one another, which is the kind of quiet wrong answer this
+      module exists to avoid.
+    #>
+    param($HardwareIds)
+    foreach ($id in @($HardwareIds)) {
+        if ("$id" -match 'CC_([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})?') {
+            $progIf = $null
+            if ($Matches[3]) { $progIf = [Convert]::ToInt32($Matches[3], 16) }
+            return @{
+                Base   = [Convert]::ToInt32($Matches[1], 16)
+                Sub    = [Convert]::ToInt32($Matches[2], 16)
+                ProgIf = $progIf
+            }
+        }
+    }
+    return $null
+}
+
+
+function ConvertTo-SlotFilter {
+    <#
+    .SYNOPSIS
+      Parse an lspci-style -s selector into its numeric fields.
+    .DESCRIPTION
+      lspci's grammar is [[[[<domain>]:]<bus>]:][<device>][.[<func>]]. Every
+      field is optional and unspecified fields match anything, so:
+
+          -s 01:        bus 01
+          -s 01:00.0    bus 01, device 00, function 0
+          -s 1          device 01 on ANY bus        (not bus 01)
+          -s .0         function 0 of everything
+          -s :00.0      device 00 function 0 on any bus
+          -s 0000:01:   domain 0000, bus 01
+
+      An earlier version compared padded strings with StartsWith, which made
+      the last four silently match nothing or the wrong thing -- a filter that
+      returns an empty list when the device is right there is the worst answer
+      a diagnostic tool can give. Fields are therefore parsed to numbers and
+      compared field-by-field, and anything that is not hex is rejected with
+      one clear error rather than a .NET exception per device.
+
+      Returns $null for an empty selector (match everything), otherwise an
+      object with Domain/Bus/Device/Function, each $null when unspecified.
     #>
     param([string]$Slot)
-    if (-not $Slot) { return '' }
+    if (-not $Slot -or -not $Slot.Trim()) { return $null }
+
+    $bad = "invalid slot filter '$Slot': expected [[<domain>]:]<bus>:]<device>[.<function>] in hex, e.g. 01:00.0, 1:, .0"
+    $s = $Slot.Trim().ToLower()
 
     $func = $null
-    $rest = $Slot
-    if ($rest.Contains('.')) {
-        $bits = $rest.Split('.')
-        $rest = $bits[0]
-        if ($bits.Length -gt 1 -and $bits[1] -ne '') { $func = $bits[1] }
+    $dot = $s.IndexOf('.')
+    if ($dot -ge 0) {
+        $f = $s.Substring($dot + 1)
+        $s = $s.Substring(0, $dot)
+        if ($f -ne '') {
+            if ($f -notmatch '^[0-7]$') { throw $bad }
+            $func = [int]$f
+        }
     }
 
-    $parts = $rest.Split(':')
-    # Accept an optional leading domain (lspci -D prints 0000:01:00.0).
-    if ($parts.Length -ge 3) { $parts = $parts[1..($parts.Length - 1)] }
+    $parts = $s.Split(':')
+    if ($parts.Length -gt 3) { throw $bad }
 
-    $out = ''
-    if ($parts.Length -ge 1 -and $parts[0] -ne '') {
-        $out = '{0:x2}' -f [Convert]::ToInt32($parts[0], 16)
+    $domain = $null; $bus = $null; $device = $null
+    $devText = $parts[$parts.Length - 1]
+    $busText = $null
+    $domText = $null
+    if ($parts.Length -ge 2) { $busText = $parts[$parts.Length - 2] }
+    if ($parts.Length -eq 3) { $domText = $parts[0] }
+
+    if ($domText) {
+        if ($domText -notmatch '^[0-9a-f]{1,4}$') { throw $bad }
+        $domain = [Convert]::ToInt32($domText, 16)
     }
-    if ($parts.Length -ge 2) {
-        $out += ':'
-        if ($parts[1] -ne '') { $out += '{0:x2}' -f [Convert]::ToInt32($parts[1], 16) }
-    } elseif ($Slot.Contains(':')) {
-        $out += ':'
+    if ($busText) {
+        if ($busText -notmatch '^[0-9a-f]{1,2}$') { throw $bad }
+        $bus = [Convert]::ToInt32($busText, 16)
     }
-    if ($null -ne $func) { $out += ".$func" }
-    return $out
+    if ($devText) {
+        if ($devText -notmatch '^[0-9a-f]{1,2}$') { throw $bad }
+        $device = [Convert]::ToInt32($devText, 16)
+        if ($device -gt 0x1f) { throw $bad }
+    }
+
+    return [pscustomobject]@{ Domain = $domain; Bus = $bus; Device = $device; Function = $func }
 }
 
 
 function Test-SlotMatch {
     <#
     .SYNOPSIS
-      Does a device's slot match an lspci-style -s filter (prefix semantics)?
+      Does a device's bus:device.function satisfy a parsed -s filter?
+    .DESCRIPTION
+      Windows' PnP data carries no PCI segment, so every device is in domain 0:
+      a filter naming any other domain matches nothing, which is also what
+      lspci reports on a single-segment machine.
     #>
-    param([string]$Bdf, [string]$Filter)
-    $norm = ConvertTo-NormalisedSlot $Filter
-    if (-not $norm) { return $true }
-    return $Bdf.StartsWith($norm)
+    param([string]$Bdf, $Filter)
+    if ($null -eq $Filter) { return $true }
+    if ($Bdf -notmatch '^([0-9a-f]{2}):([0-9a-f]{2})\.(\d)$') { return $false }
+    $bus = [Convert]::ToInt32($Matches[1], 16)
+    $dev = [Convert]::ToInt32($Matches[2], 16)
+    $fun = [int]$Matches[3]
+    if ($null -ne $Filter.Domain -and $Filter.Domain -ne 0) { return $false }
+    if ($null -ne $Filter.Bus -and $Filter.Bus -ne $bus) { return $false }
+    if ($null -ne $Filter.Device -and $Filter.Device -ne $dev) { return $false }
+    if ($null -ne $Filter.Function -and $Filter.Function -ne $fun) { return $false }
+    return $true
 }
+
+
+function ConvertTo-DeviceFilter {
+    <#
+    .SYNOPSIS
+      Parse an lspci-style -d selector: [<vendor>]:[<device>][:<class>].
+    .DESCRIPTION
+      Vendor and device are hex NUMBERS, compared for equality as lspci does:
+      `-d 80:` means vendor 0x0080, not "vendors starting with 80". An earlier
+      version used a wildcard prefix, so `-d 8:` quietly returned every Intel
+      device and `-d '*:'` returned the machine. Class keeps prefix semantics
+      (`::01` is every mass-storage class), because that is how the README has
+      always documented it and it is the useful reading.
+
+      Anything that is not hex is rejected with one clear error.
+    #>
+    param([string]$Device)
+    $filter = @{ Vendor = ''; Device = ''; Class = '' }
+    if (-not $Device -or -not $Device.Trim()) { return $filter }
+
+    $bad = "invalid device filter '$Device': expected [<vendor>]:[<device>][:<class>] in hex, e.g. 11f8:, :174a, ::0108"
+    $parts = $Device.Trim().Split(':')
+    if ($parts.Length -gt 3) { throw $bad }
+
+    $fields = @()
+    foreach ($p in $parts) {
+        $t = ($p -replace '^0[xX]', '').Trim().ToLower()
+        if ($t -ne '' -and $t -notmatch '^[0-9a-f]{1,4}$') { throw $bad }
+        $fields += $t
+    }
+    if ($fields[0]) { $filter.Vendor = '{0:x4}' -f [Convert]::ToInt32($fields[0], 16) }
+    if ($fields.Length -ge 2 -and $fields[1]) { $filter.Device = '{0:x4}' -f [Convert]::ToInt32($fields[1], 16) }
+    if ($fields.Length -ge 3 -and $fields[2]) { $filter.Class = $fields[2] }
+    return $filter
+}
+
+
+function Get-LinkDowntrainReason {
+    <#
+    .SYNOPSIS
+      Which of speed / width is below its maximum, as a list of words.
+    .DESCRIPTION
+      The single most useful thing this tool can point at, so the comparison
+      lives in ONE place. Every operand is null-guarded: PowerShell coerces
+      $null to 0 in `-lt`, so an unguarded `$null -lt 4` once reported a
+      device with no link width at all as DOWNTRAINED (width) -- a fault that
+      did not exist, from the tool whose job is to not invent faults.
+    #>
+    param($SpeedRaw, $MaxSpeedRaw, $Width, $MaxWidth)
+    $reasons = @()
+    if ($null -ne $SpeedRaw -and $null -ne $MaxSpeedRaw -and [int]$SpeedRaw -lt [int]$MaxSpeedRaw) {
+        $reasons += 'speed'
+    }
+    if ($null -ne $Width -and $null -ne $MaxWidth -and [int]$Width -lt [int]$MaxWidth) {
+        $reasons += 'width'
+    }
+    return ,$reasons
+}
+
+
+function ConvertTo-SafeText {
+    <#
+    .SYNOPSIS
+      Fold control characters (including ESC) to spaces before a string
+      reaches the console.
+    .DESCRIPTION
+      FriendlyName comes from driver INF files and vendor/device names from
+      pci.ids, which Update-PciIds downloads; neither is under our control, and
+      Windows Terminal processes VT sequences by default, so an ESC-bearing
+      name could clear and rewrite the line it is printed on. Text form only;
+      the object model keeps the raw value.
+    #>
+    param($Value)
+    if ($null -eq $Value) { return $null }
+    return ("$Value" -replace '[\x00-\x1f\x7f]', ' ')
+}
+
+
+function Get-Field {
+    <#
+    .SYNOPSIS
+      A property's value, or $null if the object does not carry it.
+    .DESCRIPTION
+      The module runs under Set-StrictMode 2.0, where reading a property that
+      does not exist is a terminating error. The formatters are public and
+      take pipeline input, and `Get-PciDevice | Select-Object Slot,DeviceName |
+      Format-Lspci` is an idiom people reach for, so a trimmed object must
+      render with gaps rather than crash.
+    #>
+    param($Object, [string]$Name)
+    if ($null -eq $Object) { return $null }
+    $p = $Object.PSObject.Properties[$Name]
+    if ($p) { return $p.Value }
+    return $null
+}
+
+
+# The shape of a WinLspci.PciDevice, in output order. Kept as data so
+# Get-PciAttributeName can answer without enumerating the machine (it used to
+# run a full ~2s enumeration to ask one object what its fields were called),
+# and pinned by a test that compares it against a live object.
+$script:AttributeNames = @(
+    'Slot', 'VendorId', 'DeviceId', 'SubsystemVendorId', 'SubsystemId', 'Revision',
+    'VendorName', 'DeviceName', 'ClassCode', 'ClassName', 'ProgIf',
+    'FriendlyName', 'Driver', 'DriverVersion', 'Status', 'Problem', 'NumaNode',
+    'LinkStateReported', 'LinkSpeed', 'LinkSpeedRaw', 'LinkWidth',
+    'MaxLinkSpeed', 'MaxLinkSpeedRaw', 'MaxLinkWidth', 'Downtrained',
+    'MaxPayloadSize', 'MaxPayloadSizeSupported', 'MaxReadRequestSize',
+    'AerCapable', 'ParentInstanceId', 'InstanceId', 'Present'
+)
 
 
 function Get-PciDevice {
@@ -331,10 +553,12 @@ function Get-PciDevice {
 
     .PARAMETER Device
       lspci-style selector: [<vendor>]:[<device>][:<class>]. Any field may be
-      empty or omitted. Examples: 11f8: , :174a , ::0108
+      empty or omitted. Vendor and device are exact hex IDs; class is a hex
+      prefix. Examples: 11f8: , :174a , ::0108 , ::01
 
     .PARAMETER Slot
-      lspci-style slot filter, matched as a prefix: 01: or 01:00 or 01:00.0
+      lspci-style slot filter [[<domain>]:]<bus>:]<device>[.<func>], any field
+      optional: 01: , 01:00.0 , 1 (device 01 on any bus) , .0 (every function 0)
 
     .PARAMETER IncludeAbsent
       Include devices that are not currently present.
@@ -342,7 +566,7 @@ function Get-PciDevice {
     .EXAMPLE
       Get-PciDevice -Device '11f8:'
     .EXAMPLE
-      Get-PciDevice | Where-Object { $_.LinkSpeedRaw -lt $_.MaxLinkSpeedRaw }
+      Get-PciDevice | Where-Object Downtrained
     #>
     [CmdletBinding()]
     param(
@@ -351,35 +575,38 @@ function Get-PciDevice {
         [switch]$IncludeAbsent
     )
 
-    $filterVendor = ''; $filterDevice = ''; $filterClass = ''
-    if ($Device) {
-        $parts = $Device.Split(':')
-        if ($parts.Count -ge 1) { $filterVendor = ($parts[0] -replace '^0[xX]', '').Trim() }
-        if ($parts.Count -ge 2) { $filterDevice = ($parts[1] -replace '^0[xX]', '').Trim() }
-        if ($parts.Count -ge 3) { $filterClass  = ($parts[2] -replace '^0[xX]', '').Trim() }
-    }
+    # Validate both selectors up front, so a typo is one clear error before
+    # any enumeration rather than a .NET exception per device.
+    $devFilter = ConvertTo-DeviceFilter $Device
+    $slotFilter = ConvertTo-SlotFilter $Slot
+    $filterVendor = $devFilter.Vendor
+    $filterDevice = $devFilter.Device
+    $filterClass = $devFilter.Class
 
-    # Push the vendor filter into the instance-id wildcard. Enumerating every
-    # device and filtering afterwards, then querying properties on all of them,
-    # took over two minutes on a normal laptop; this makes it ~2s.
+    # One projected WQL query for the PCI entities, then the CIM property
+    # method per device.
+    #
+    # The projection matters more than the WHERE: SELECT * on Win32_PnPEntity
+    # costs ~1.3s on a laptop and naming only the columns this module reads
+    # halves it, because the provider materialises far less per instance. The
+    # per-device property fetch is ~30ms, so a full listing is ~1.5s rather
+    # than the ~36s the Get-PnpDevice / Get-PnpDeviceProperty pairing took.
+    #
+    # The LIKE text is exactly "PCI\\VEN[_]%": two backslashes (one level of
+    # string escaping -- LIKE does not consume a second), and [_] because a
+    # bare underscore is WQL's single-character wildcard. Get this wrong and
+    # the query returns ZERO rows silently, rendering a machine with no PCI
+    # bus; a test pins the row count against a client-side -like.
+    #
+    # $filterVendor is only ever four validated hex digits (see
+    # ConvertTo-DeviceFilter), so interpolating it into the query is safe.
+    $where = 'PNPDeviceID LIKE "PCI\\VEN[_]%"'
     if ($filterVendor) {
-        $idFilter = "PCI\VEN_$filterVendor*"
-    } else {
-        $idFilter = 'PCI\VEN_*'
+        $where = 'PNPDeviceID LIKE "PCI\\VEN[_]{0}%"' -f $filterVendor
     }
-
-    # Win32_PnPEntity in one query, then the CIM property method per device.
-    # Enumerating this way costs ~1s for the whole machine; the property fetch
-    # is ~40ms per device, so a full listing lands around 1.5s rather than the
-    # ~36s the Get-PnpDevice / Get-PnpDeviceProperty pairing took.
-    $entities = @(Get-CimInstance -ClassName Win32_PnPEntity -ErrorAction SilentlyContinue |
-        Where-Object { $_.PNPDeviceID -like 'PCI\VEN_*' })
-
-    if ($filterVendor) {
-        $entities = @($entities | Where-Object {
-            $_.PNPDeviceID -like "PCI\VEN_$filterVendor*"
-        })
-    }
+    $query = 'SELECT DeviceID,PNPDeviceID,Name,Service,Status,ConfigManagerErrorCode,HardwareID ' +
+             "FROM Win32_PnPEntity WHERE $where"
+    $entities = @(Get-CimInstance -Query $query -ErrorAction SilentlyContinue)
 
     foreach ($pnp in $entities) {
         $instanceId = $pnp.PNPDeviceID
@@ -388,10 +615,18 @@ function Get-PciDevice {
         $ven = $Matches[1].ToLower()
         $dev = $Matches[2].ToLower()
 
-        if ($filterDevice -and $dev -notlike $filterDevice) { continue }
+        if ($filterVendor -and $ven -ne $filterVendor) { continue }
+        if ($filterDevice -and $dev -ne $filterDevice) { continue }
 
-        $sub = $null
-        if ($instanceId -match 'SUBSYS_([0-9A-Fa-f]{8})') { $sub = $Matches[1].ToLower() }
+        # Windows packs the subsystem as SUBSYS_<device><vendor>: the high word
+        # is the subsystem DEVICE id and the low word the subsystem VENDOR id.
+        # Printed raw it reads backwards against lspci's vendor:device habit --
+        # 174a1c5c on an SK hynix (1c5c) drive looks like Sandisk (174a).
+        $subVen = $null; $subDev = $null
+        if ($instanceId -match 'SUBSYS_([0-9A-Fa-f]{4})([0-9A-Fa-f]{4})') {
+            $subDev = $Matches[1].ToLower()
+            $subVen = $Matches[2].ToLower()
+        }
         $rev = $null
         if ($instanceId -match 'REV_([0-9A-Fa-f]{2})') { $rev = $Matches[1].ToLower() }
 
@@ -401,18 +636,33 @@ function Get-PciDevice {
         $subClass  = Get-BagValue $bag 'DEVPKEY_PciDevice_SubClass'
         $progIf    = Get-BagValue $bag 'DEVPKEY_PciDevice_ProgIf'
 
-        $classHex = ''
+        # Host bridges commonly carry no BaseClass property; the hardware IDs
+        # still say CC_0600. Fall back to them rather than asserting class 00.
+        if ($null -eq $baseClass -or $null -eq $subClass) {
+            $cc = Get-ClassFromHardwareId $pnp.HardwareID
+            if ($cc) {
+                $baseClass = $cc.Base
+                $subClass = $cc.Sub
+                if ($null -eq $progIf) { $progIf = $cc.ProgIf }
+            }
+        }
+
+        # $null, not '', when absent: "class not reported" must stay distinct
+        # from class 0000, exactly as link state does.
+        $classHex = $null
         if ($null -ne $baseClass -and $null -ne $subClass) {
             $classHex = ('{0:x2}{1:x2}' -f [int]$baseClass, [int]$subClass)
         }
-        if ($filterClass -and $classHex -notlike "$filterClass*") { continue }
+        if ($filterClass) {
+            if ($null -eq $classHex -or -not $classHex.StartsWith($filterClass)) { continue }
+        }
 
         $bdf = ConvertTo-Bdf `
             (Get-BagValue $bag 'DEVPKEY_Device_LocationInfo') `
             (Get-BagValue $bag 'DEVPKEY_Device_BusNumber') `
             (Get-BagValue $bag 'DEVPKEY_Device_Address')
 
-        if ($Slot -and -not (Test-SlotMatch $bdf $Slot)) { continue }
+        if (-not (Test-SlotMatch $bdf $slotFilter)) { continue }
 
         $curSpeed = Get-BagValue $bag 'DEVPKEY_PciDevice_CurrentLinkSpeed'
         $curWidth = Get-BagValue $bag 'DEVPKEY_PciDevice_CurrentLinkWidth'
@@ -443,7 +693,7 @@ function Get-PciDevice {
             $mrrs = $script:PayloadSize[[int]$mrrsRaw]
         }
 
-        $className = 'Unclassified device'
+        $className = $null
         if ($null -ne $baseClass) {
             if ($null -ne $subClass) {
                 $className = Get-PciClassName -BaseClass ([int]$baseClass) -SubClass ([int]$subClass)
@@ -452,12 +702,15 @@ function Get-PciDevice {
             }
         }
 
+        $downtrain = Get-LinkDowntrainReason $curSpeed $maxSpeed $curWidth $maxWidth
+
         [pscustomobject]@{
             PSTypeName       = 'WinLspci.PciDevice'
             Slot             = $bdf
             VendorId         = $ven
             DeviceId         = $dev
-            SubsystemId      = $sub
+            SubsystemVendorId = $subVen
+            SubsystemId      = $subDev
             Revision         = $rev
             VendorName       = Get-PciVendorName $ven
             DeviceName       = Get-PciDeviceName $ven $dev
@@ -480,6 +733,7 @@ function Get-PciDevice {
             MaxLinkSpeed     = $maxSpeedText
             MaxLinkSpeedRaw  = $maxSpeed
             MaxLinkWidth     = $maxWidth
+            Downtrained      = ($downtrain.Count -gt 0)
             MaxPayloadSize   = $mps
             MaxPayloadSizeSupported = $mpsMaxBytes
             MaxReadRequestSize = $mrrs
@@ -507,69 +761,106 @@ function Format-Lspci {
     param(
         [Parameter(ValueFromPipeline)]$Device,
         [int]$Verbosity = 0,
-        [int]$Numeric = 2,
-        [switch]$ShowDriver
+        [int]$Numeric = 2
     )
     process {
         foreach ($d in @($Device)) {
-            $vendor = $d.VendorName
-            if (-not $vendor) { $vendor = "Vendor $($d.VendorId)" }
-            $name = $d.DeviceName
+            # Get-Field, not dot access: under StrictMode a trimmed object
+            # (Select-Object Slot,DeviceName) must render with gaps, not crash.
+            $vendorId = Get-Field $d 'VendorId'
+            $deviceId = Get-Field $d 'DeviceId'
+            $vendor = ConvertTo-SafeText (Get-Field $d 'VendorName')
+            if (-not $vendor) { $vendor = "Vendor $vendorId" }
+            $name = ConvertTo-SafeText (Get-Field $d 'DeviceName')
             if (-not $name) {
-                $name = $d.FriendlyName
-                if (-not $name) { $name = "Device $($d.DeviceId)" }
+                $name = ConvertTo-SafeText (Get-Field $d 'FriendlyName')
+                if (-not $name) { $name = "Device $deviceId" }
             }
 
+            # A device that reports no class is said to have none -- never
+            # shown as class 0000 or as the real class-00 name.
+            $classCode = Get-Field $d 'ClassCode'
+            $className = Get-Field $d 'ClassName'
+            if (-not $classCode) { $classCode = '????' }
+            if (-not $className) { $className = 'Unknown class' }
+
             if ($Numeric -eq 1) {
-                $ident = "$($d.VendorId):$($d.DeviceId)"
-                $classPart = $d.ClassCode
+                $ident = "${vendorId}:${deviceId}"
+                $classPart = $classCode
             } elseif ($Numeric -eq 2) {
-                $ident = "$vendor $name [$($d.VendorId):$($d.DeviceId)]"
-                $classPart = "$($d.ClassName) [$($d.ClassCode)]"
+                $ident = "$vendor $name [${vendorId}:${deviceId}]"
+                $classPart = "$className [$classCode]"
             } else {
                 $ident = "$vendor $name"
-                $classPart = $d.ClassName
+                $classPart = $className
             }
 
             $rev = ''
-            if ($d.Revision) { $rev = " (rev $($d.Revision))" }
-            Write-Output ("{0} {1}: {2}{3}" -f $d.Slot, $classPart, $ident, $rev)
+            $revision = Get-Field $d 'Revision'
+            if ($revision) { $rev = " (rev $revision)" }
+            Write-Output ("{0} {1}: {2}{3}" -f (Get-Field $d 'Slot'), $classPart, $ident, $rev)
 
             if ($Verbosity -ge 1) {
-                if ($d.LinkStateReported) {
-                    $line = "        LnkSta: $($d.LinkSpeed) x$($d.LinkWidth)"
-                    if ($d.MaxLinkSpeed) {
-                        $line += " (max $($d.MaxLinkSpeed) x$($d.MaxLinkWidth))"
+                if (Get-Field $d 'LinkStateReported') {
+                    $width = Get-Field $d 'LinkWidth'
+                    $maxWidth = Get-Field $d 'MaxLinkWidth'
+                    $widthText = 'x?'
+                    if ($null -ne $width) { $widthText = "x$width" }
+                    $line = "        LnkSta: $(Get-Field $d 'LinkSpeed') $widthText"
+                    if (Get-Field $d 'MaxLinkSpeed') {
+                        $maxWidthText = 'x?'
+                        if ($null -ne $maxWidth) { $maxWidthText = "x$maxWidth" }
+                        $line += " (max $(Get-Field $d 'MaxLinkSpeed') $maxWidthText)"
                     }
                     # Downtrained links are the single most useful thing this
                     # tool can point at, so say it in words rather than making
                     # the reader compare two numbers.
-                    if ($null -ne $d.MaxLinkSpeedRaw -and
-                        $d.LinkSpeedRaw -lt $d.MaxLinkSpeedRaw) {
-                        $line += '  <-- DOWNTRAINED (speed)'
-                    }
-                    if ($null -ne $d.MaxLinkWidth -and $d.LinkWidth -lt $d.MaxLinkWidth) {
-                        $line += '  <-- DOWNTRAINED (width)'
-                    }
+                    $reasons = Get-LinkDowntrainReason (Get-Field $d 'LinkSpeedRaw') `
+                        (Get-Field $d 'MaxLinkSpeedRaw') $width $maxWidth
+                    foreach ($r in $reasons) { $line += "  <-- DOWNTRAINED ($r)" }
                     Write-Output $line
                 } else {
                     Write-Output '        LnkSta: not reported by this device'
                 }
 
-                $drv = $d.Driver
+                $drv = ConvertTo-SafeText (Get-Field $d 'Driver')
                 if (-not $drv) { $drv = '<none>' }
                 $status = "        Driver: $drv"
-                if ($d.DriverVersion) { $status += " ($($d.DriverVersion))" }
-                if ($d.Status -ne 'OK') { $status += "  STATUS=$($d.Status) PROBLEM=$($d.Problem)" }
+                $drvVer = Get-Field $d 'DriverVersion'
+                if ($drvVer) { $status += " ($drvVer)" }
+                $devStatus = Get-Field $d 'Status'
+                if ($devStatus -and $devStatus -ne 'OK') {
+                    $status += "  STATUS=$devStatus PROBLEM=$(Get-Field $d 'Problem')"
+                }
                 Write-Output $status
+            }
+
+            if ($Verbosity -ge 2) {
+                $subVen = Get-Field $d 'SubsystemVendorId'
+                $subDev = Get-Field $d 'SubsystemId'
+                if ($subVen -and $subDev) {
+                    $subName = Get-PciVendorName $subVen
+                    if (-not $subName) { $subName = "Vendor $subVen" }
+                    Write-Output "        Subsystem: $subName [${subVen}:${subDev}]"
+                }
+                $mps = Get-Field $d 'MaxPayloadSize'
+                if ($null -ne $mps) {
+                    Write-Output ("        DevCtl: MPS {0} bytes (max {1}), MaxReadReq {2} bytes" -f `
+                        $mps, (Get-Field $d 'MaxPayloadSizeSupported'), (Get-Field $d 'MaxReadRequestSize'))
+                }
+                $numa = Get-Field $d 'NumaNode'
+                if ($null -ne $numa) { Write-Output "        NUMA node: $numa" }
+                if (Get-Field $d 'AerCapable') { Write-Output '        Capabilities: AER present' }
+                Write-Output "        InstanceId: $(Get-Field $d 'InstanceId')"
             }
 
             if ($Verbosity -ge 3) {
                 # lspci -vvv decodes every capability structure. We cannot --
-                # that needs config space. So -vvv here means "every field
-                # Windows will give us", plus an explicit statement of what is
-                # missing, rather than a quieter version of -vv that leaves the
-                # reader assuming they saw everything.
+                # that needs config space. So -vvv here means everything -vv
+                # shows, then "every field Windows will give us", plus an
+                # explicit statement of what is missing, rather than a quieter
+                # version of -vv that leaves the reader assuming they saw
+                # everything.
                 Write-Output '        -- all available properties --'
                 foreach ($prop in ($d.PSObject.Properties | Sort-Object Name)) {
                     if ($prop.Name -eq 'PSTypeName') { continue }
@@ -580,17 +871,6 @@ function Format-Lspci {
                 Write-Output ('        NOT AVAILABLE without a kernel driver: ' +
                               'config-space dump, capability walk, ASPM, ' +
                               'AER registers, LTR, DPC')
-            }
-
-            if ($Verbosity -eq 2) {
-                if ($d.SubsystemId) { Write-Output "        Subsystem: $($d.SubsystemId)" }
-                if ($null -ne $d.MaxPayloadSize) {
-                    Write-Output ("        DevCtl: MPS {0} bytes (max {1}), MaxReadReq {2} bytes" -f `
-                        $d.MaxPayloadSize, $d.MaxPayloadSizeSupported, $d.MaxReadRequestSize)
-                }
-                if ($null -ne $d.NumaNode) { Write-Output "        NUMA node: $($d.NumaNode)" }
-                if ($d.AerCapable) { Write-Output '        Capabilities: AER present' }
-                Write-Output "        InstanceId: $($d.InstanceId)"
             }
         }
     }
@@ -619,36 +899,60 @@ function Format-PciTree {
         [int]$Numeric = 0
     )
 
-    $byId = @{}
-    foreach ($d in $Devices) { $byId[$d.InstanceId] = $d }
+    # Everything below works on INDICES into $all, never on InstanceId as a
+    # key for a node: a trimmed object has no InstanceId, and keying visited
+    # on the empty string once marked the first such node visited and silently
+    # dropped every other one. Indices need no identity and cannot collide.
+    $all = @($Devices)
+    $indexById = @{}
+    for ($n = 0; $n -lt $all.Count; $n++) {
+        $id = Get-Field $all[$n] 'InstanceId'
+        if ($null -ne $id -and "$id" -ne '' -and -not $indexById.ContainsKey("$id")) { $indexById["$id"] = $n }
+    }
 
-    $children = @{}
+    $children = @{}     # parent index -> list of child indices
     $roots = @()
-    foreach ($d in $Devices) {
-        $parent = $d.ParentInstanceId
-        if ($parent -and $byId.ContainsKey($parent)) {
-            if (-not $children.ContainsKey($parent)) { $children[$parent] = @() }
-            $children[$parent] += $d
+    for ($n = 0; $n -lt $all.Count; $n++) {
+        $parent = Get-Field $all[$n] 'ParentInstanceId'
+        $parentIndex = -1
+        if ($parent -and $indexById.ContainsKey("$parent")) { $parentIndex = $indexById["$parent"] }
+        # A node whose parent is itself (or otherwise unreachable from a root)
+        # is caught by the visited sweep at the end.
+        if ($parentIndex -ge 0 -and $parentIndex -ne $n) {
+            if (-not $children.ContainsKey($parentIndex)) { $children[$parentIndex] = @() }
+            $children[$parentIndex] += $n
         } else {
-            $roots += $d
+            $roots += $n
         }
     }
 
-    function Write-Node {
-        param($Node, [string]$Prefix, [bool]$IsLast, [bool]$IsRoot)
+    $visited = New-Object 'bool[]' $all.Count
 
-        $label = $Node.Slot
+    function Write-Node {
+        param([int]$Index, [string]$Prefix, [bool]$IsLast, [bool]$IsRoot)
+
+        if ($visited[$Index]) { return }
+        $visited[$Index] = $true
+        $Node = $all[$Index]
+
+        $label = "$(Get-Field $Node 'Slot')"
+        $ids = "$(Get-Field $Node 'VendorId'):$(Get-Field $Node 'DeviceId')"
         if ($Numeric -eq 1) {
-            $label += " [$($Node.VendorId):$($Node.DeviceId)]"
+            $label += " [$ids]"
         } else {
-            $desc = $Node.DeviceName
-            if (-not $desc) { $desc = $Node.FriendlyName }
-            if (-not $desc) { $desc = $Node.ClassName }
-            if ($Numeric -eq 2) { $desc = "$desc [$($Node.VendorId):$($Node.DeviceId)]" }
+            $desc = Get-Field $Node 'DeviceName'
+            if (-not $desc) { $desc = Get-Field $Node 'FriendlyName' }
+            if (-not $desc) { $desc = Get-Field $Node 'ClassName' }
+            if (-not $desc) { $desc = 'Unknown class' }
+            $desc = ConvertTo-SafeText $desc
+            if ($Numeric -eq 2) { $desc = "$desc [$ids]" }
             $label += "  $desc"
         }
-        if ($Node.LinkStateReported) {
-            $label += "  ($($Node.LinkSpeed) x$($Node.LinkWidth))"
+        if (Get-Field $Node 'LinkStateReported') {
+            $w = Get-Field $Node 'LinkWidth'
+            $wText = 'x?'
+            if ($null -ne $w) { $wText = "x$w" }
+            $label += "  ($(Get-Field $Node 'LinkSpeed') $wText)"
         }
 
         if ($IsRoot) {
@@ -661,16 +965,25 @@ function Format-PciTree {
         }
 
         $kids = @()
-        if ($children.ContainsKey($Node.InstanceId)) {
-            $kids = @($children[$Node.InstanceId] | Sort-Object Slot)
+        if ($children.ContainsKey($Index)) {
+            $kids = @($children[$Index] | Sort-Object { "$(Get-Field $all[$_] 'Slot')" })
         }
         for ($i = 0; $i -lt $kids.Count; $i++) {
             Write-Node $kids[$i] $childPrefix ($i -eq $kids.Count - 1) $false
         }
     }
 
-    foreach ($r in ($roots | Sort-Object Slot)) {
+    $bySlot = { "$(Get-Field $all[$_] 'Slot')" }
+    foreach ($r in ($roots | Sort-Object $bySlot)) {
         Write-Node $r '' $true $true
+    }
+
+    # Nothing may be silently dropped. Anything the walk from the roots did
+    # not reach (a parent cycle, for instance) is rendered as a root of its
+    # own, so an incomplete tree is obviously ragged rather than quietly short.
+    $orphans = @(0..($all.Count - 1) | Where-Object { $all.Count -gt 0 -and -not $visited[$_] })
+    foreach ($o in ($orphans | Sort-Object $bySlot)) {
+        Write-Node $o '' $true $true
     }
 }
 
@@ -723,9 +1036,9 @@ function ConvertTo-PciAttributeRecord {
                 if ($PresentOnly -and -not $isPresent) { continue }
                 if ($Match -and "$value" -notmatch $Match) { continue }
                 [pscustomobject]@{
-                    Slot      = $d.Slot
-                    VendorId  = $d.VendorId
-                    DeviceId  = $d.DeviceId
+                    Slot      = Get-Field $d 'Slot'
+                    VendorId  = Get-Field $d 'VendorId'
+                    DeviceId  = Get-Field $d 'DeviceId'
                     Attribute = $prop.Name
                     Value     = $value
                     Present   = $isPresent
@@ -748,12 +1061,9 @@ function Get-PciAttributeName {
     #>
     [CmdletBinding()]
     param()
-    $sample = Get-PciDevice | Select-Object -First 1
-    if (-not $sample) { return @() }
-    $sample.PSObject.Properties |
-        Where-Object { $_.Name -ne 'PSTypeName' } |
-        ForEach-Object { $_.Name } |
-        Sort-Object
+    # Answered from the static shape, not by enumerating the machine: this
+    # used to cost a full ~2s enumeration (and the CLI had already done one).
+    $script:AttributeNames | Sort-Object
 }
 
 
@@ -799,7 +1109,13 @@ function Format-PciDelimited {
         [string[]]$Field
     )
     begin {
-        $script:_headerWritten = $false
+        if ($Delimiter -eq '') { throw 'Format-PciDelimited: -Delimiter must not be empty' }
+
+        # Function-local, not $script: -- begin/process share scope, and a
+        # module-scope flag was reset by any NESTED Format-PciDelimited
+        # (e.g. inside a ForEach-Object on the outer stream), re-emitting the
+        # header for every remaining row.
+        $headerWritten = $false
 
         # A device row and an attribute row have different natural columns.
         $deviceFields = @(
@@ -824,17 +1140,21 @@ function Format-PciDelimited {
                 $names = @($names | Where-Object { $item.PSObject.Properties[$_] })
             }
 
-            if ($Header -and -not $script:_headerWritten) {
+            if ($Header -and -not $headerWritten) {
                 Write-Output ($names -join $Delimiter)
-                $script:_headerWritten = $true
+                $headerWritten = $true
             }
 
             $values = foreach ($n in $names) {
                 $prop = $item.PSObject.Properties[$n]
                 $v = ''
                 if ($prop -and $null -ne $prop.Value) { $v = "$($prop.Value)" }
-                # Strip, do not escape -- see the note above.
-                $v -replace [regex]::Escape($Delimiter), '/'
+                # Strip, do not escape -- see the note above. Line breaks and
+                # other control characters get the same treatment: one record
+                # must stay one physical line, whatever a driver INF put in
+                # FriendlyName.
+                $v = $v -replace '[\x00-\x1f\x7f]', ' '
+                $v.Replace($Delimiter, '/')
             }
             Write-Output ($values -join $Delimiter)
         }
@@ -853,18 +1173,44 @@ function Update-PciIds {
     [CmdletBinding(SupportsShouldProcess)]
     param([string]$Uri = 'https://pci-ids.ucw.cz/v2.2/pci.ids')
 
-    if ($PSCmdlet.ShouldProcess($script:PciIdsPath, "download $Uri")) {
-        $tmp = "$script:PciIdsPath.tmp"
-        Invoke-WebRequest -Uri $Uri -OutFile $tmp -UseBasicParsing
-        # Only replace a working database once the new one parses.
-        $lineCount = (Get-Content $tmp | Measure-Object -Line).Lines
-        if ($lineCount -lt 1000) {
-            Remove-Item $tmp -Force
-            throw "downloaded pci.ids has only $lineCount lines; refusing to replace the bundled copy"
+    if ($Uri -notmatch '^https://') { throw "Update-PciIds: -Uri must be https:// (got '$Uri')" }
+    if (-not $PSCmdlet.ShouldProcess($script:PciIdsPath, "download $Uri")) { return }
+
+    # PS 5.1 on older Windows negotiates TLS 1.0 by default, which the origin
+    # refuses. Add 1.2 to whatever is already enabled rather than replacing it.
+    [Net.ServicePointManager]::SecurityProtocol =
+        [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+
+    # Download to the system temp dir, not the install dir: a failed transfer
+    # leaves nothing behind next to the module, and the install dir may be
+    # read-only (Program Files) -- in which case Move-Item fails with a clear
+    # access error instead of a half-written database.
+    $tmp = [IO.Path]::GetTempFileName()
+    try {
+        Invoke-WebRequest -Uri $Uri -OutFile $tmp -UseBasicParsing -ErrorAction Stop
+
+        # Prove it PARSES -- the old check only counted lines, so a long but
+        # wrong-format response would have replaced a working database.
+        $tables = Read-PciIdsFile -Path $tmp
+        if ($tables.Vendors.Count -lt 1000 -or -not $tables.Vendors.ContainsKey('8086') -or
+            -not $tables.Classes.ContainsKey('0108')) {
+            throw ("downloaded pci.ids does not parse as a PCI ID database " +
+                   "($($tables.Vendors.Count) vendors); refusing to replace the bundled copy")
         }
-        Move-Item $tmp $script:PciIdsPath -Force
+
+        # Keep the previous database until the new one is in place.
+        $bak = "$script:PciIdsPath.bak"
+        if (Test-Path $script:PciIdsPath) { Copy-Item $script:PciIdsPath $bak -Force }
+        # Copy, not Move: a file MOVED out of %TEMP% keeps the temp directory's
+        # ACL (admins + SYSTEM + this user only), so in a machine-wide install
+        # every other account would silently lose vendor/device names. An
+        # overwrite keeps the destination's own ACL; the finally block removes
+        # the temp copy.
+        Copy-Item $tmp $script:PciIdsPath -Force
         Import-PciIds -Force
-        Write-Verbose "updated: $lineCount lines"
+        Write-Verbose "updated: $($tables.Vendors.Count) vendors, $($tables.Devices.Count) devices; previous copy at $bak"
+    } finally {
+        if (Test-Path $tmp) { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
     }
 }
 
@@ -872,4 +1218,5 @@ function Update-PciIds {
 Export-ModuleMember -Function Get-PciDevice, Format-Lspci, Format-PciTree,
     ConvertTo-PciAttributeRecord, Get-PciAttributeName,
     Format-PciDelimited, Update-PciIds,
-    Get-PciVendorName, Get-PciDeviceName, Get-PciClassName, Import-PciIds
+    Get-PciVendorName, Get-PciDeviceName, Get-PciClassName, Import-PciIds,
+    Read-PciIdsFile
