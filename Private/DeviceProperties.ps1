@@ -157,6 +157,24 @@ $script:FixtureName = $null
 $script:FixtureFromEnv = $null    # the WINLSPCI_FIXTURE value a fixture was loaded from, if it was
 $script:LastBagError = $null
 
+function Sync-PciFixtureEnv {
+    <#
+    .SYNOPSIS
+      Apply WINLSPCI_FIXTURE: load it, reload when it changes, drop it when
+      it goes away. An explicit Set-PciFixture is never touched.
+    .DESCRIPTION
+      Called by everything that reports or uses the data source, so the env
+      var is never sticky and provenance never lags the data.
+    #>
+    if ($script:FixtureFromEnv -and ($env:WINLSPCI_FIXTURE -ne $script:FixtureFromEnv)) {
+        $script:Fixture = $null; $script:FixtureName = $null; $script:FixtureFromEnv = $null
+    }
+    if ($null -eq $script:Fixture -and $env:WINLSPCI_FIXTURE) {
+        Set-PciFixture -Path $env:WINLSPCI_FIXTURE
+        $script:FixtureFromEnv = $env:WINLSPCI_FIXTURE
+    }
+}
+
 function Get-PciDataSource {
     <#
     .SYNOPSIS
@@ -166,6 +184,7 @@ function Get-PciDataSource {
     #>
     [CmdletBinding()]
     param()
+    Sync-PciFixtureEnv
     if ($null -ne $script:Fixture -or $env:WINLSPCI_FIXTURE) {
         $name = $script:FixtureName
         if (-not $name -and $env:WINLSPCI_FIXTURE) { $name = Split-Path -Leaf $env:WINLSPCI_FIXTURE }
@@ -255,14 +274,8 @@ function Get-PciEntity {
     # diagnostic tool reports is exactly what burns someone at 2am.
     # Re-checked on every call, so the env var is not sticky: clearing it in
     # a module session returns to live data, and changing it reloads. An
-    # explicit Set-PciFixture (not from the env) is never touched here.
-    if ($script:FixtureFromEnv -and ($env:WINLSPCI_FIXTURE -ne $script:FixtureFromEnv)) {
-        $script:Fixture = $null; $script:FixtureName = $null; $script:FixtureFromEnv = $null
-    }
-    if ($null -eq $script:Fixture -and $env:WINLSPCI_FIXTURE) {
-        Set-PciFixture -Path $env:WINLSPCI_FIXTURE
-        $script:FixtureFromEnv = $env:WINLSPCI_FIXTURE
-    }
+    # explicit Set-PciFixture (not from the env) is never touched.
+    Sync-PciFixtureEnv
 
     if ($null -ne $script:Fixture) {
         return @($script:Fixture | Where-Object { $_.PNPDeviceID -like 'PCI\VEN_*' })

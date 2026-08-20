@@ -100,8 +100,14 @@ function Get-PciDevice {
         $seenSource[$key] = $true
         $sources += @{ Name = "$($s.ComputerName)"; Session = $s }
     }
+    # Only walk the names if the parameter was actually given: an unbound
+    # [string[]] is $null, and @($null) iterates once on PowerShell 7 (not on
+    # 5.1), which turned every plain Get-PciDevice into "empty name" there.
+    # An EXPLICIT $null or '' is still an error.
+    $rawNames = @()
+    if ($PSBoundParameters.ContainsKey('ComputerName')) { $rawNames = @($ComputerName) }
     $names = @()
-    foreach ($c in @($ComputerName)) {
+    foreach ($c in $rawNames) {
         $n = "$c".Trim()
         if ($n -eq '') { throw "Get-PciDevice: -ComputerName contains an empty name; refusing to fall back to the local machine silently." }
         if ($seenSource.ContainsKey("name:$($n.ToLowerInvariant())")) { continue }

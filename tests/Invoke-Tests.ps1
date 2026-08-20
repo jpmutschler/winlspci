@@ -510,12 +510,14 @@ It 'switch-hierarchy: lspci-shaped tree with bus ranges, type tags, and the down
 It 'the WINLSPCI_FIXTURE env var is not sticky in a module session' {
     $prev = $env:WINLSPCI_FIXTURE
     try {
+        Remove-Item Env:WINLSPCI_FIXTURE -ErrorAction SilentlyContinue
+        $liveCount = @(Get-PciDevice).Count        # whatever this machine has (a CI runner may have exactly one)
         $env:WINLSPCI_FIXTURE = Join-Path $fixtureDir 'phantom.json'
         Assert-Equal 1 @(Get-PciDevice).Count 'env fixture active'
         Assert-Equal 'fixture:phantom.json' (Get-PciDataSource)
         Remove-Item Env:WINLSPCI_FIXTURE
-        Assert-True (@(Get-PciDevice).Count -ne 1) 'clearing the env var must return to live data'
-        Assert-Equal 'windows-pnp' (Get-PciDataSource)
+        Assert-Equal 'windows-pnp' (Get-PciDataSource) 'clearing the env var must return to live data'
+        Assert-Equal $liveCount @(Get-PciDevice).Count 'live count after clearing'
         $env:WINLSPCI_FIXTURE = Join-Path $fixtureDir 'azure-sriov.json'
         Assert-Equal 3 @(Get-PciDevice).Count 'changing the env var reloads'
     } finally {
@@ -1648,10 +1650,10 @@ It 'an attached -s value survives PowerShell eating the colon (-s01: and -s01:00
     # naive $args sees `-s01:` as `-s01`, which under lspci's grammar is DEVICE
     # 01 rather than bus 01 -- a silently different answer. The CLI recovers
     # the raw command line instead.
-    $busOnly = @(Get-PciDevice -Slot "${sampleBus}:").Count
-    $r = Invoke-Cli @("-s${sampleBus}:", '-n')
+    $busOnly = @($fx | Where-Object { $_.Slot -like "${fxBus}:*" }).Count    # fixture, like the CLI child
+    $r = Invoke-Cli @("-s${fxBus}:", '-n')
     Assert-Equal 0 $r.Code $r.Text
-    Assert-Equal $busOnly $r.Output.Count "-s${sampleBus}: should select bus $fxBus"
+    Assert-Equal $busOnly $r.Output.Count "-s${fxBus}: should select bus $fxBus"
     $r2 = Invoke-Cli @("-s$fxSlot", '-n')
     Assert-Equal 1 $r2.Output.Count "-s$fxSlot"
     $r3 = Invoke-Cli @('-Match:zzzznope', '-Attribute', 'Slot')
