@@ -27,32 +27,31 @@ Import-Module .\dist\winlspci\winlspci.psd1; Get-Command -Module winlspci   # 19
 powershell -ExecutionPolicy Bypass -File tests\Invoke-Tests.ps1               # suite still runs against the source tree
 ```
 
-`dist\` is git-ignored. The Gallery publish and the scoop/winget archives
-should be made from `dist\winlspci`, not from the source tree.
+`dist\` is git-ignored. The release zip (§4b) and, later, the Gallery publish
+are made from `dist\winlspci`, not from the source tree; scoop/winget install
+the tag's source archive.
 
-## 2. PowerShell Gallery
+## 2. PowerShell Gallery — planned, not yet done
 
 The manifest is Gallery-ready (`ProjectUri`, `LicenseUri`, tags, release
-notes pointing at `CHANGELOG.md`). From the built copy:
+notes pointing at `CHANGELOG.md`), but nothing has been published: it needs a
+Gallery API key, which is a one-time setup — sign in at
+<https://www.powershellgallery.com>, *API Keys* → *Create*, scope "Push new
+packages and package versions", glob pattern `winlspci`. Then, from the built
+copy:
 
 ```powershell
 Test-ModuleManifest .\dist\winlspci\winlspci.psd1
 Publish-Module -Path .\dist\winlspci -NuGetApiKey $env:PSGALLERY_KEY -Repository PSGallery
+Find-Module winlspci
 ```
 
-After `Install-Module winlspci -Scope CurrentUser`, the module is in a
-`PSModulePath` directory and `bin\` is **not** on PATH. `Install-LspciShim`
-writes a two-line `lspci.cmd` into `%LOCALAPPDATA%\Microsoft\WindowsApps`
-(usually on the user's PATH — the function warns when it is not — and
-writable only by that user) pointing at the installed module's `bin\lspci.ps1`:
-
-```powershell
-Install-Module winlspci -Scope CurrentUser
-Install-LspciShim
-lspci -nn
-```
-
-`Install-LspciShim -Remove` deletes it.
+Once published, `Install-Module winlspci -Scope CurrentUser` lands the module
+in a `PSModulePath` directory with `bin\` **not** on PATH, which is what
+`Install-LspciShim` is for (it already works for a module unzipped from a
+release): it writes a two-line `lspci.cmd` into
+`%LOCALAPPDATA%\Microsoft\WindowsApps` pointing at the module's
+`bin\lspci.ps1`; `-Remove` deletes it.
 
 ## 3. scoop
 
@@ -117,6 +116,6 @@ editing the manifest afterwards invalidates its signature.
 - [ ] `packaging\Build-Module.ps1 -OutputDirectory .\dist` and import the result once
 - [ ] tag, push the tag
 - [ ] GitHub release with the module zip attached (§4b)
-- [ ] `Publish-Module` from `dist\winlspci`
+- [ ] (when Gallery publishing is set up, §2) `Publish-Module` from `dist\winlspci`
 - [ ] scoop manifest hash (§3), winget manifests in `packaging/winget/` (§4)
 - [ ] README: confirm the install section still describes the easiest path

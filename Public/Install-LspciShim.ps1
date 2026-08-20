@@ -4,9 +4,10 @@ function Install-LspciShim {
       Put an `lspci` command on PATH that runs this module's CLI.
 
     .DESCRIPTION
-      Clone-and-run users add bin\ to PATH themselves. Install-Module users
-      have the module in a PSModulePath directory with no bin\ on PATH, so
-      this writes a tiny lspci.cmd into a directory that is on PATH -- by
+      Clone-and-run users add bin\ to PATH themselves. A module unzipped from
+      a release (or, once published, installed from the PowerShell Gallery)
+      sits wherever it was put, with no bin\ on PATH, so this writes a tiny
+      lspci.cmd into a directory that is on PATH -- by
       default %LOCALAPPDATA%\Microsoft\WindowsApps, which Windows usually
       puts on the user's PATH (it warns if it is not) and which no other
       non-admin user can write to.
@@ -21,7 +22,8 @@ function Install-LspciShim {
       Delete the shim instead.
 
     .EXAMPLE
-      Install-Module winlspci -Scope CurrentUser
+      Expand-Archive winlspci-0.5.0-module.zip $env:LOCALAPPDATA\Programs
+      Import-Module $env:LOCALAPPDATA\Programs\winlspci\winlspci.psd1
       Install-LspciShim
       lspci -nn
     #>

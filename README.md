@@ -125,17 +125,22 @@ Import-Module $env:LOCALAPPDATA\Programs\winlspci\winlspci.psd1
 Get-PciDevice -Device '10de:' | Format-Lspci -Verbosity 2
 ```
 
-From the PowerShell Gallery (once published — see `packaging/README.md`), the
-module lands in a `PSModulePath` directory with no `bin\` on PATH;
-`Install-LspciShim` writes a two-line `lspci.cmd` into
+Each [GitHub release](https://github.com/jpmutschler/winlspci/releases) also
+carries a single-file build of the module (`winlspci-<version>-module.zip`).
+Unzip it anywhere and either put its `bin\` on PATH as above, or import it and
+let `Install-LspciShim` write a two-line `lspci.cmd` into
 `%LOCALAPPDATA%\Microsoft\WindowsApps` (usually on the user's PATH — it warns
-if not — and writable only by that user) pointing at the installed CLI:
+if not — and writable only by that user) pointing at wherever the module lives:
 
 ```powershell
-Install-Module winlspci -Scope CurrentUser
+Expand-Archive winlspci-0.5.0-module.zip $env:LOCALAPPDATA\Programs
+Import-Module $env:LOCALAPPDATA\Programs\winlspci\winlspci.psd1
 Install-LspciShim          # -Remove to undo
 lspci -nn
 ```
+
+Publishing to the PowerShell Gallery (`Install-Module winlspci`) is planned
+but not done yet; `packaging/README.md` has the steps.
 
 **Requires Windows PowerShell 5.1** — the one that ships with Windows. Written
 to 5.1 syntax on purpose (no ternary, no `??`, no `-AsHashtable`): a tool that
@@ -633,8 +638,8 @@ Public\                  exported functions, one file per function or cohesive g
   Format-PciDelimited.ps1  -Delimited
   Compare-PciBaseline.ps1  Export-PciBaseline, Compare-PciBaseline, Compare-PciDeviceSet
   PciIds.ps1               pci.ids parse (vendors, devices, subsystems, classes, prog-ifs), lookups, Update-PciIds
-  Install-LspciShim.ps1    puts `lspci` on PATH for Install-Module users
-packaging\               release notes: Gallery, scoop manifest, winget, signing
+  Install-LspciShim.ps1    puts `lspci` on PATH for a module installed from a release zip (or, later, the Gallery)
+packaging\               release steps: single-file build, scoop manifest, winget manifests, Gallery (planned), signing
 Private\                 internal helpers
   DeviceProperties.ps1     DEVPKEY fetch, BDF, class-from-hardware-id
   Selectors.ps1            -s and -d parsing
