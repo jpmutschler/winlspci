@@ -2,7 +2,7 @@
 
 `lspci` for Windows, without a kernel driver.
 
-Source and issues: <https://github.com/jpmutschler/winlspci> · [User's Manual (PDF)](docs/winlspci%20Users%20Manual%20v1.2.pdf) · MIT · Windows PowerShell 5.1 · [![tests](https://github.com/jpmutschler/winlspci/actions/workflows/tests.yml/badge.svg)](https://github.com/jpmutschler/winlspci/actions/workflows/tests.yml)
+Source and issues: <https://github.com/jpmutschler/winlspci> · [User's Manual (PDF)](docs/winlspci%20Users%20Manual%20v1.3.pdf) · MIT · Windows PowerShell 5.1 · [![tests](https://github.com/jpmutschler/winlspci/actions/workflows/tests.yml/badge.svg)](https://github.com/jpmutschler/winlspci/actions/workflows/tests.yml)
 
 ```
 PS> lspci -nn
@@ -30,8 +30,10 @@ f3:00.0 3D controller: NVIDIA Corporation GA107M [GeForce RTX 3050 Ti Mobile] (r
         Driver: nvlddmkm (32.0.16.1088)
 
 PS> lspci -t
--00:1d.0  Tiger Lake-LP PCI Express Root Port #9
- \-f3:00.0  GA107M [GeForce RTX 3050 Ti Mobile]  (8GT/s x4)
+-[0000:00]-+-00:06.0-[01]  11th Gen Core Processor PCIe Controller  [root port]
+           |           \-01:00.0  Gold P31/BC711/PC711 NVMe Solid State Drive  (8GT/s x4)
+           \-00:1d.0-[f3]  Tiger Lake-LP PCI Express Root Port #9  [root port]
+                       \-f3:00.0  GA107M [GeForce RTX 3050 Ti Mobile]  (8GT/s x4)
 
 PS> lspci -Attribute LinkSpeed -Match '16GT|32GT|64GT'   # no grep needed
 PS> lspci -Downtrained                                   # anything below its max
@@ -81,7 +83,7 @@ to PCI config space; that needs a signed kernel-mode driver. ...
 |---|---|
 | 0 | ok |
 | 1 | a filter (`-s`, `-d`, `-Downtrained`, `-Attribute`/`-Match`) matched nothing |
-| 2 | the request is impossible here (`-x`) or a known lspci flag this tool does not implement (`-m`, `-p`, `-b`, …) |
+| 2 | the request is impossible here (`-x`) or a known lspci flag this tool does not implement (`-p`, `-b`, `-M`, …) |
 | 3 | `-Diff` / `-Watch` found differences |
 | 64 | usage error: unknown option, or a selector that is not hex |
 | 70 | the WMI enumeration itself failed (Windows/WMI error — not an empty machine; retry, or check the Winmgmt service) |

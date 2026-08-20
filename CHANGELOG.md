@@ -7,6 +7,10 @@ object shape may still change between minors (and says so here when it does).
 
 ## [Unreleased]
 
+(nothing yet)
+
+## [0.5.0] - 2026-08-20
+
 ### Added
 - **Device type** (`DeviceType`, `DeviceTypeRaw`, `IsBridge`) from
   `DEVPKEY_PciDevice_DeviceType`: root port, upstream/downstream switch port,
