@@ -1681,7 +1681,10 @@ It 'emits valid JSON with its limits stated and a schema version' {
     Assert-True ($obj.note -like '*configuration-space*') 'JSON should state its limits'
     Assert-Equal 1 $obj.schemaVersion 'schemaVersion is the compatibility promise'
     Assert-Equal "$((Get-Module winlspci).Version)" $obj.winlspciVersion
-    Assert-True ($obj.generatedAt -match '^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$') "generatedAt '$($obj.generatedAt)'"
+    # PowerShell 7's ConvertFrom-Json turns an ISO timestamp into [datetime];
+    # 5.1 leaves the string. Accept either shape, check the wire text directly.
+    Assert-True ($r.Text -match '"generatedAt":\s*"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ"') "generatedAt on the wire: $($r.Text.Substring(0, [Math]::Min(300, $r.Text.Length)))"
+    Assert-True ($obj.generatedAt -is [datetime] -or "$($obj.generatedAt)" -match '^\d{4}-\d\d-\d\dT') "generatedAt parsed as $($obj.generatedAt.GetType().Name)"
     Assert-Equal $env:COMPUTERNAME $obj.computerName
 }
 
