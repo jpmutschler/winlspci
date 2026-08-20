@@ -2,6 +2,8 @@
 
 `lspci` for Windows, without a kernel driver.
 
+Source and issues: <https://github.com/jpmutschler/winlspci> · MIT · Windows PowerShell 5.1
+
 ```
 PS> lspci -nn
 00:1c.0 PCI bridge [0604]: Intel Corporation Tigerlake PCH-LP PCI Express Root Port #6 [8086:a0bd] (rev 20)
@@ -11,7 +13,7 @@ PS> lspci -d 1c5c: -vv
 01:00.0 Non-Volatile memory controller: SK hynix Gold P31/BC711/PC711 NVMe Solid State Drive (rev 00)
         LnkSta: 8GT/s x4 (max 8GT/s x4)
         Driver: stornvme (10.0.26100.8972)
-        Subsystem: 174a1c5c
+        Subsystem: SK hynix [1c5c:174a]
         DevCtl: MPS 256 bytes (max 512), MaxReadReq 512 bytes
         Capabilities: AER present
 
@@ -56,6 +58,15 @@ lspci: cannot dump configuration space (-x). Windows exposes no userland path
 to PCI config space; that needs a signed kernel-mode driver. ...
 ```
 
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| 0 | ok |
+| 1 | a filter (`-s`, `-d`, `-Downtrained`, `-Attribute`/`-Match`) matched nothing |
+| 2 | the request is impossible here (`-x`) or a known lspci flag this tool does not implement (`-m`, `-p`, `-b`, …) |
+| 64 | usage error: unknown option, or a selector that is not hex |
+
 ---
 
 ## Install
@@ -63,8 +74,8 @@ to PCI config space; that needs a signed kernel-mode driver. ...
 No install required — clone and run.
 
 ```powershell
-git clone <this repo> C:\tools\winlspci
-$env:PATH += ';C:\tools\winlspci\bin'
+git clone https://github.com/jpmutschler/winlspci.git $env:LOCALAPPDATA\Programs\winlspci
+$env:PATH += ";$env:LOCALAPPDATA\Programs\winlspci\bin"
 lspci -nn
 ```
 
@@ -72,17 +83,24 @@ To make it permanent, append to the **User** PATH:
 
 ```powershell
 $p = [Environment]::GetEnvironmentVariable('PATH','User')
-[Environment]::SetEnvironmentVariable('PATH', "$p;C:\tools\winlspci\bin", 'User')
+[Environment]::SetEnvironmentVariable('PATH', "$p;$env:LOCALAPPDATA\Programs\winlspci\bin", 'User')
 ```
 
 > Use the .NET API, **not** `setx`. `setx` silently truncates PATH at 1024
 > characters, and a developer machine is routinely well past that — truncating
 > it destroys most of your environment with no warning.
 
+> Why `%LOCALAPPDATA%\Programs` rather than `C:\tools`: a folder created
+> directly under `C:\` inherits *Modify* for every authenticated user, so any
+> standard account could rewrite `lspci.ps1` for the next administrator who
+> runs it. A hardware-debug tool is exactly the thing that gets run from an
+> elevated shell. Per-user (`%LOCALAPPDATA%`) or `C:\Program Files` are both
+> fine.
+
 Or import the module directly:
 
 ```powershell
-Import-Module C:\tools\winlspci\winlspci.psd1
+Import-Module $env:LOCALAPPDATA\Programs\winlspci\winlspci.psd1
 Get-PciDevice -Device '10de:' | Format-Lspci -Verbosity 2
 ```
 
@@ -100,16 +118,28 @@ Measured against Linux `lspci`, not aspirational.
 
 | lspci | winlspci | Notes |
 |---|---|---|
-| `-s <bdf>` | `-s` | Prefix match. Accepts padded, unpadded and domain-qualified: `1:`, `01:`, `1:0.0`, `0000:01:00.0` |
-| `-d <ven>:<dev>:<class>` | `-d` | Any field may be empty: `-d 11f8:`, `-d :174a`, `-d ::0108` |
+| `-s [[<dom>]:]<bus>:]<dev>[.<fn>]` | `-s` | lspci's grammar, every field optional: `01:` (bus), `01:00.0`, `1` (**device** 01 on any bus), `.0` (every function 0), `:00.0`, `0000:01:00.0`. Padded or unpadded |
+| `-d [<ven>]:[<dev>][:<class>]` | `-d` | Vendor and device are exact hex IDs (`-d 80:` is vendor `0080`, not every `80xx`); class is a prefix (`::01` = all storage). `-d 11f8:`, `-d :174a`, `-d ::0108` |
 | `-t` | `-t` | Real topology, from `DEVPKEY_Device_Parent`. Shows link state inline |
 | `-v` | `-v` | Link state (current **and** max), driver, status |
-| `-vv` | `-vv` | Adds MPS, MRRS, subsystem, NUMA, AER presence |
-| `-vvv` | `-vvv` | Every property Windows exposes, **plus an explicit list of what is missing** |
+| `-vv` | `-vv` | Adds MPS, MRRS, subsystem (`vendor:device`), NUMA, AER presence |
+| `-vvv` | `-vvv` | Everything `-vv` shows, then every property Windows exposes, **plus an explicit list of what is missing** |
 | `-n` | `-n` | IDs only |
 | `-nn` | `-nn` | Names and IDs |
-| `-D` | `-Domain` | Not `-D`: PowerShell matches aliases **case-insensitively**, so `-D` collides with `-d`. Always `0000` — Windows' PnP data carries no segment number |
-| `-k` | shown by `-v` | Driver and version are part of `-v` |
+| `-D` | `-D` | Domain prefix. Always `0000` — Windows' PnP data carries no segment number |
+| `-k` | `-k` | Driver and version (the same lines `-v` shows) |
+| `-tv`, `-nnk`, `-vvnn` … | same | Short flags combine, as in lspci; they are **case-sensitive** (`-D` ≠ `-d`) |
+
+Long options (`-Json`, `-Downtrained`, `-Attribute` …) are case-insensitive and
+may be abbreviated to a unique prefix.
+
+> **Values and the PowerShell parser.** Run through the `lspci` launcher
+> (`bin\lspci.cmd`, on PATH) every form works as typed, because the script
+> recovers the raw command line. If you call `bin\lspci.ps1` directly from a
+> PowerShell *prompt*, PowerShell's own parser gets there first: it splits
+> `-s01:` at the colon and reads a bare `.0` or `00.0` as the number `0`. At
+> the prompt, put a space before the value and quote anything that starts with
+> a dot or a colon: `.\lspci.ps1 -s '.0'`, `-s ':00.0'`, `-s 01:00.0`.
 
 ### Deliberately refused
 
@@ -119,7 +149,13 @@ Measured against Linux `lspci`, not aspirational.
 
 ### Not implemented (possible, just not built)
 
-`-b` (bus-centric view) · `-m`/`-mm` (machine-readable — `-Json`/`-Csv`/`-Attribute` supersede it) · `-p` (custom ID file) · `-i` (custom pci.ids path) · `-q`/`-Q` (online ID lookup) · `-A`/`-H1`/`-H2`/`-F` (access methods — meaningless here) · `-M` (bus mapping)
+`-b` (bus-centric view) · `-m`/`-mm` (machine-readable — `-Json`/`-Csv`/`-Attribute` supersede it) · `-p` (custom ID file) · `-P` (path display) · `-i` (custom pci.ids path) · `-q`/`-Q` (online ID lookup) · `-A`/`-O`/`-F`/`-G`/`-H1`/`-H2` (access methods — meaningless here) · `-M` (bus mapping)
+
+Each of these is recognised and exits 2 with *"not implemented"* and a
+pointer to the nearest equivalent. (An earlier version let PowerShell's
+parameter binder guess: `-p` quietly ran `-PresentOnly`, `-m` demanded a
+value for `-Match`. A tool that runs a different command from the one you
+typed is worse than one that says no.) Anything else unknown exits 64.
 
 ### Beyond lspci
 
@@ -132,7 +168,7 @@ Measured against Linux `lspci`, not aspirational.
 | `-Delimited` | `\|`-separated records, for `-split` / `cut` / `awk` habits |
 | `-Delimiter` / `-Header` | Change the separator (e.g. tab); name the columns |
 | `-Json` / `-Csv` | Structured output; `-Csv` quotes properly |
-| `-Downtrained` | Only devices below their maximum speed or width |
+| `-Downtrained` | Only devices below their maximum speed or width (the `Downtrained` property). A filter: exits 1 when nothing is |
 
 ---
 
@@ -247,19 +283,25 @@ worse than an obvious failure.**
 **"Not reported" is never rendered as zero.** Root ports and chipset devices
 legitimately expose no link state. Rendering that as `x0` would look like a dead
 link, so absent stays `$null` and prints as *"not reported by this device"*.
-`Present` is a real field in attribute output for the same reason. There is a
-test for it.
+The same rule covers class codes: the host bridge reports no class property,
+so it is read from the `CC_0600` hardware ID instead, and a device with no class
+at all prints *Unknown class `[????]`* rather than class `0000`. `DOWNTRAINED`
+is only ever said when both the current and the maximum are reported
+(`$null -lt 4` is true in PowerShell, and once flagged a width that was never
+there). `Present` is a real field in attribute output for the same reason.
+There are tests for each.
 
 **A filter that matches nothing exits non-zero.** `lspci -d 11f8:` finding no
 card must not look like success — that is the difference between "the card is
-not there" and "the command worked". Same for an attribute query with no rows.
+not there" and "the command worked". Same for `-Downtrained` and for an
+attribute query with no rows.
 
-**Slot filters normalise both sides.** `-s 1:` used to return *nothing* while
-`-s 01:` matched the same device, because the comparison was against the raw
-string. A filter that silently finds nothing when the device is right in front
-of you is the worst failure this tool could have, so padded, unpadded and
-domain-qualified forms are all normalised before comparison — and pinned by
-tests asserting `1:` and `01:` agree.
+**Selectors are parsed, not string-matched.** `-s` follows lspci's grammar
+field by field, so `1:` and `01:` agree, `-s 1` means device 01 on any bus
+(as it does in lspci — an earlier version read it as bus 01), and `.0` or
+`:00.0` work. `-d` compares vendor and device as hex numbers, so `-d 8:`
+no longer quietly returns every Intel device. Anything that is not hex is one
+clear error, not a .NET exception per device.
 
 ---
 
@@ -285,25 +327,38 @@ exactly once.
 
 ## Performance
 
-Full enumeration of a laptop (24 devices) takes ~2s; a filtered query ~1s.
+Full enumeration of a laptop (24 devices) takes ~1.7s in-process, ~2.5s as a
+fresh `lspci` command (of which ~0.4s is PowerShell starting and importing the
+module). `-ListAttributes` is ~0.6s: it answers from the module's static list
+rather than enumerating the machine.
 
-Getting there took three attempts, and the middle one is worth recording:
+Getting there took several attempts, and two are worth recording:
 
 | Approach | Time |
 |---|---|
 | `Get-PnpDevice` + per-property `Get-PnpDeviceProperty` | **>5 min** |
 | Batched `Get-PnpDeviceProperty -KeyName <16 keys>` | ~36s |
 | `Get-PnpDeviceProperty -KeyName '*'` | *appeared* 2× faster — **returned zero properties** |
-| `Win32_PnPEntity` + `Invoke-CimMethod GetDeviceProperties` | **~2s** |
+| `Win32_PnPEntity` (`SELECT *`) + `Invoke-CimMethod GetDeviceProperties` | ~2s |
+| `SELECT <7 columns> … WHERE PNPDeviceID LIKE "PCI\\VEN[_]%"` + same method | **~1.7s** |
 
 The wildcard was the interesting failure: it looked like the fastest option and
 was in fact doing nothing, because `-KeyName` does not support wildcards. The
 benchmark was measuring a no-op, and the output still looked plausible. Only
 checking the *values* caught it.
 
-The winning approach uses the CIM method the cmdlet wraps — ~39ms per device
-versus ~1230ms — because the cmdlet appears to re-resolve the device on every
-call while the CIM method takes an already-resolved instance.
+The per-device property fetch uses the CIM method the cmdlet wraps — ~30ms per
+device versus ~1230ms — because the cmdlet appears to re-resolve the device on
+every call while the CIM method takes an already-resolved instance.
+
+The other surprise was where the remaining time went: the `Win32_PnPEntity`
+enumeration itself, not the per-device calls. A `WHERE` clause alone barely
+moves it; *projecting* the seven columns the module reads halves it, because
+the provider materialises far less per instance. The `LIKE` text has exactly
+two backslashes and `[_]` for the underscore (WQL's single-character wildcard)
+— get the escaping wrong and the query returns **zero rows silently**, which
+renders as a machine with no PCI bus. A test pins its row count against a
+client-side `-like`. Parsing `pci.ids` is ~50ms and not worth optimising.
 
 ---
 
@@ -316,8 +371,10 @@ bench that is usually the situation. Refresh it explicitly:
 Update-PciIds          # from https://pci-ids.ucw.cz
 ```
 
-The update refuses to replace a working database with a suspiciously short
-download.
+The update downloads to the temp directory, proves the file parses as a PCI ID
+database (vendors, a known vendor, a known class) before touching anything,
+keeps the previous copy as `pci.ids.bak`, and forces TLS 1.2 on for older
+Windows PowerShell hosts. The bundled copy is dated in `lspci -Version`.
 
 > **`11f8` reads "PMC-Sierra Inc."** Microsemi acquired PMC-Sierra, Microchip
 > acquired Microsemi, and the vendor ID never changed. A Microchip Switchtec
