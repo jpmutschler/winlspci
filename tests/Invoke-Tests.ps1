@@ -103,7 +103,7 @@ function Invoke-Cli {
 function New-FakeDevice {
     param([hashtable]$Override = @{})
     $d = [ordered]@{
-        Slot = '01:00.0'; VendorId = 'dead'; DeviceId = 'beef'
+        Slot = '01:00.0'; Domain = 0; VendorId = 'dead'; DeviceId = 'beef'
         SubsystemVendorId = 'dead'; SubsystemId = 'cafe'; Revision = '00'
         VendorName = 'Test'; DeviceName = 'Widget'
         ClassCode = '0108'; ClassName = 'NVMe'; ProgIf = 2; FriendlyName = 'Widget'
@@ -190,18 +190,55 @@ It 'Update-PciIds -WhatIf does not touch the database' {
 Write-Host "`nEnumeration"
 
 $devices = @(Get-PciDevice)
+
+function Split-Slot {
+    # "[dddd:]bb:dd.f" -> its fields. Hyper-V / Azure VFs carry a non-zero
+    # domain, so no test may assume the slot is exactly "bb:dd.f".
+    param([string]$Slot)
+    if ($Slot -notmatch '^(?:([0-9a-f]{4}):)?([0-9a-f]{2}):([0-9a-f]{2})\.(\d)$') { return $null }
+    $dom = 0
+    if ($Matches[1]) { $dom = [Convert]::ToInt32($Matches[1], 16) }
+    return [pscustomobject]@{
+        Domain = $dom; DomainHex = ('{0:x4}' -f $dom)
+        Bus = $Matches[2]; Device = $Matches[3]; Function = $Matches[4]
+        Bdf = "$($Matches[2]):$($Matches[3]).$($Matches[4])"
+    }
+}
+
 # Samples taken from the machine, not assumed: there is no guarantee of a bus 01.
 $sample = $null
-$sampleSlot = $null
+$sampleSlot = $null     # as rendered, possibly domain-qualified
+$sampleParts = $null
+$sampleBdf = $null      # bb:dd.f without the domain
 $sampleBus = $null
 if ($devices.Count -gt 0) {
     $sample = $devices[0]
     $sampleSlot = $sample.Slot
-    $sampleBus = $sampleSlot.Substring(0, 2)
+    $sampleParts = Split-Slot $sampleSlot
+    if ($sampleParts) { $sampleBdf = $sampleParts.Bdf; $sampleBus = $sampleParts.Bus }
 }
 
 It 'enumerates at least one PCI device' {
     Assert-True ($devices.Count -gt 0) 'no PCI devices found at all'
+}
+
+It 'decodes a Hyper-V bus number with the segment in its upper bits' {
+    # Azure SR-IOV VFs report "PCI bus 5598976" (0x556F00): segment 556f,
+    # bus 00. Rendered naively that was bus "556f00", which nothing can parse.
+    $loc = & (Get-Module winlspci) { ConvertTo-Bdf 'PCI bus 5598976, device 2, function 0' $null $null }
+    Assert-Equal '556f:00:02.0' $loc.Slot
+    Assert-Equal 0x556f $loc.Domain
+    $plain = & (Get-Module winlspci) { ConvertTo-Bdf 'PCI bus 1, device 0, function 0' $null $null }
+    Assert-Equal '01:00.0' $plain.Slot 'domain 0 is not shown'
+    Assert-Equal 0 $plain.Domain
+}
+
+It 'an unspecified domain in -s matches every domain; a given one only itself' {
+    $m = Get-Module winlspci
+    Assert-True (& $m { Test-SlotMatch '556f:00:02.0' (ConvertTo-SlotFilter '00:02.0') })
+    Assert-True (& $m { Test-SlotMatch '556f:00:02.0' (ConvertTo-SlotFilter '556f:00:02.0') })
+    Assert-True (-not (& $m { Test-SlotMatch '556f:00:02.0' (ConvertTo-SlotFilter '0000:00:02.0') }))
+    Assert-True (& $m { Test-SlotMatch '01:00.0' (ConvertTo-SlotFilter '0000:01:00.0') })
 }
 
 It 'the WQL query finds every PCI entity a client-side filter finds' {
@@ -220,10 +257,11 @@ It 'every device has a 4-hex-digit vendor and device id' {
     }
 }
 
-It 'every device has a parseable bus:device.function' {
+It 'every device has a parseable [domain:]bus:device.function' {
     foreach ($d in $devices) {
-        Assert-True ($d.Slot -match '^[0-9a-f]{2}:[0-9a-f]{2}\.\d$') `
-            "device $($d.VendorId):$($d.DeviceId) has slot '$($d.Slot)'"
+        $p = Split-Slot $d.Slot
+        Assert-True ($null -ne $p) "device $($d.VendorId):$($d.DeviceId) has slot '$($d.Slot)'"
+        Assert-Equal $p.Domain $d.Domain "$($d.Slot): Domain property disagrees with the slot"
     }
 }
 
@@ -361,22 +399,25 @@ It 'accepts an unpadded bus number, as lspci does' {
 }
 
 It 'accepts a full unpadded bus:device.function' {
-    if ($sampleSlot -notmatch '^([0-9a-f]{2}):([0-9a-f]{2})\.(\d)$') { throw "odd sample slot $sampleSlot" }
-    $unpadded = '{0:x}:{1:x}.{2}' -f [Convert]::ToInt32($Matches[1], 16), [Convert]::ToInt32($Matches[2], 16), $Matches[3]
-    $a = @(Get-PciDevice -Slot $sampleSlot).Count
+    $unpadded = '{0:x}:{1:x}.{2}' -f [Convert]::ToInt32($sampleParts.Bus, 16), [Convert]::ToInt32($sampleParts.Device, 16), $sampleParts.Function
+    $a = @(Get-PciDevice -Slot $sampleBdf).Count
     $b = @(Get-PciDevice -Slot $unpadded).Count
-    Assert-True ($a -gt 0) "sample slot $sampleSlot matched nothing"
+    Assert-True ($a -gt 0) "sample slot $sampleBdf matched nothing"
     Assert-Equal $a $b
 }
 
 It 'accepts a domain-qualified slot' {
-    $a = @(Get-PciDevice -Slot $sampleSlot).Count
-    $b = @(Get-PciDevice -Slot "0000:$sampleSlot").Count
-    Assert-Equal $a $b
+    $any = @(Get-PciDevice -Slot $sampleBdf).Count                                    # every domain
+    $one = @(Get-PciDevice -Slot "$($sampleParts.DomainHex):$sampleBdf").Count       # the sample's
+    Assert-True ($one -ge 1) "domain-qualified $($sampleParts.DomainHex):$sampleBdf matched nothing"
+    Assert-True ($one -le $any) 'qualifying by domain cannot match more'
+    $allSameDomain = @($devices | Where-Object { $_.Domain -ne $sampleParts.Domain }).Count -eq 0
+    if ($allSameDomain) { Assert-Equal $any $one 'single-domain machine: qualified and unqualified agree' }
 }
 
-It 'a non-zero domain matches nothing: Windows has no segment data' {
-    Assert-Equal 0 @(Get-PciDevice -Slot "0001:$sampleSlot").Count
+It 'a domain nobody is in matches nothing' {
+    $unused = '{0:x4}' -f ((($devices | ForEach-Object { $_.Domain } | Measure-Object -Maximum).Maximum + 1) -band 0xffff)
+    Assert-Equal 0 @(Get-PciDevice -Slot "${unused}:$sampleBdf").Count
 }
 
 It 'a bus with nothing on it matches nothing' {
@@ -388,8 +429,8 @@ It 'a bus with nothing on it matches nothing' {
 
 It 'a bare number is a DEVICE on any bus, as in lspci -- not a bus' {
     # lspci: [[[[<domain>]:]<bus>]:][<device>][.[<func>]]. `-s 1` is device 01.
-    $devNum = $sampleSlot.Substring(3, 2)
-    $expected = @($devices | Where-Object { $_.Slot.Substring(3, 2) -eq $devNum }).Count
+    $devNum = $sampleParts.Device
+    $expected = @($devices | Where-Object { (Split-Slot $_.Slot).Device -eq $devNum }).Count
     Assert-Equal $expected @(Get-PciDevice -Slot $devNum).Count "-s $devNum"
     Assert-Equal $expected @(Get-PciDevice -Slot ([Convert]::ToInt32($devNum, 16)).ToString('x')).Count 'unpadded device'
 }
@@ -401,8 +442,8 @@ It '.0 selects function 0 of everything' {
 }
 
 It ':<device>.<func> selects that device and function on any bus' {
-    $tail = $sampleSlot.Substring(3)   # dd.f
-    $expected = @($devices | Where-Object { $_.Slot.EndsWith($tail) }).Count
+    $tail = "$($sampleParts.Device).$($sampleParts.Function)"   # dd.f
+    $expected = @($devices | Where-Object { $_.Slot.EndsWith(":$tail") }).Count
     Assert-Equal $expected @(Get-PciDevice -Slot ":$tail").Count
 }
 
@@ -772,7 +813,9 @@ It '-k alone is not silently ignored: it shows the driver' {
 It '-D prefixes the domain, distinct from -d' {
     $r = Invoke-Cli @('-D', '-s', $sampleSlot)
     Assert-Equal 0 $r.Code $r.Text
-    Assert-True ($r.Output[0].StartsWith("0000:$sampleSlot")) "expected a 0000: prefix: $($r.Output[0])"
+    $expected = "$($sampleParts.DomainHex):$sampleBdf"   # a non-zero domain is already in the slot
+    Assert-True ($r.Output[0].StartsWith($expected)) "expected '$expected' prefix: $($r.Output[0])"
+    Assert-True (-not $r.Output[0].StartsWith('0000:0000:')) 'domain must not be prefixed twice'
 }
 
 It 'long options are case-insensitive and may be abbreviated' {
@@ -826,8 +869,8 @@ It 'a bad -s value is one clean usage error' {
 }
 
 It '-s <n> on the CLI selects a device number on any bus' {
-    $devNum = $sampleSlot.Substring(3, 2)
-    $expected = @($devices | Where-Object { $_.Slot.Substring(3, 2) -eq $devNum }).Count
+    $devNum = $sampleParts.Device
+    $expected = @($devices | Where-Object { (Split-Slot $_.Slot).Device -eq $devNum }).Count
     $r = Invoke-Cli @('-s', $devNum, '-n')
     Assert-Equal $expected $r.Output.Count "-s $devNum"
 }

@@ -93,24 +93,42 @@ function Get-BagValue {
 function ConvertTo-Bdf {
     <#
     .SYNOPSIS
-      lspci-style bus:device.function from Windows' location data.
+      lspci-style [domain:]bus:device.function from Windows' location data.
     .DESCRIPTION
       Prefers DEVPKEY_Device_LocationInfo ("PCI bus 1, device 0, function 0"),
       which is authoritative. Falls back to BusNumber plus the packed Address
       property (device in the high word, function in the low word) when the
       location string is absent or in an unexpected form.
+
+      Windows' bus number is 32 bits wide while a PCI bus is 8: Hyper-V and
+      Azure put the PCI SEGMENT in the upper bits for SR-IOV virtual functions
+      ("PCI bus 5598976" = 0x556F00 = segment 556f, bus 00). Rendering that as
+      bus "556f00" produced a slot nothing could parse. The segment becomes
+      the Domain, and -- as lspci does -- it is shown in the slot whenever it
+      is not zero: 556f:00:02.0.
+
+      Returns a hashtable: Domain (int) and Slot (string).
     #>
     param($LocationInfo, $BusNumber, $Address)
 
+    $domain = 0; $bus = $null; $dev = $null; $fun = $null
     if ($LocationInfo -and $LocationInfo -match 'bus (\d+), device (\d+), function (\d+)') {
-        return ('{0:x2}:{1:x2}.{2:d}' -f [int]$Matches[1], [int]$Matches[2], [int]$Matches[3])
+        $raw = [int64]$Matches[1]; $dev = [int]$Matches[2]; $fun = [int]$Matches[3]
+        $bus = [int]($raw -band 0xFF)
+        $domain = [int](($raw -shr 8) -band 0xFFFF)
+    } elseif ($null -ne $BusNumber -and $null -ne $Address) {
+        $raw = [int64]$BusNumber
+        $bus = [int]($raw -band 0xFF)
+        $domain = [int](($raw -shr 8) -band 0xFFFF)
+        $dev = ([int64]$Address -shr 16) -band 0xFFFF
+        $fun = [int64]$Address -band 0xFFFF
+    } else {
+        return @{ Domain = 0; Slot = '??:??.?' }
     }
-    if ($null -ne $BusNumber -and $null -ne $Address) {
-        $dev = ([int]$Address -shr 16) -band 0xFFFF
-        $fun = [int]$Address -band 0xFFFF
-        return ('{0:x2}:{1:x2}.{2:d}' -f [int]$BusNumber, $dev, $fun)
-    }
-    return '??:??.?'
+
+    $slot = '{0:x2}:{1:x2}.{2:d}' -f $bus, $dev, $fun
+    if ($domain -ne 0) { $slot = ('{0:x4}:' -f $domain) + $slot }
+    return @{ Domain = $domain; Slot = $slot }
 }
 
 

@@ -341,11 +341,11 @@ if ($opt.Downtrained) {
 }
 
 if ($opt.Domain) {
-    # lspci -D prints the domain. Windows' PnP data carries no PCI segment
-    # number, so this is 0000 for every device -- correct on a single-segment
-    # machine, and stated rather than silently assumed.
+    # lspci -D prints the domain on every line. A non-zero domain (Hyper-V /
+    # Azure SR-IOV functions) is already in the Slot; everything else is 0000.
     $devices = @($devices | ForEach-Object {
-        $_ | Add-Member -NotePropertyName Slot -NotePropertyValue "0000:$($_.Slot)" -Force -PassThru
+        if ($_.Slot -match '^[0-9a-f]{4}:') { $_ }
+        else { $_ | Add-Member -NotePropertyName Slot -NotePropertyValue "0000:$($_.Slot)" -Force -PassThru }
     })
 }
 

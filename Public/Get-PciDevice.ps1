@@ -3,7 +3,7 @@
 # run a full ~2s enumeration to ask one object what its fields were called),
 # and pinned by a test that compares it against a live object.
 $script:AttributeNames = @(
-    'Slot', 'VendorId', 'DeviceId', 'SubsystemVendorId', 'SubsystemId', 'Revision',
+    'Slot', 'Domain', 'VendorId', 'DeviceId', 'SubsystemVendorId', 'SubsystemId', 'Revision',
     'VendorName', 'DeviceName', 'ClassCode', 'ClassName', 'ProgIf',
     'FriendlyName', 'Driver', 'DriverVersion', 'Status', 'Problem', 'NumaNode',
     'LinkStateReported', 'LinkSpeed', 'LinkSpeedRaw', 'LinkWidth',
@@ -124,10 +124,11 @@ function Get-PciDevice {
             if ($null -eq $classHex -or -not $classHex.StartsWith($filterClass)) { continue }
         }
 
-        $bdf = ConvertTo-Bdf `
+        $location = ConvertTo-Bdf `
             (Get-BagValue $bag 'DEVPKEY_Device_LocationInfo') `
             (Get-BagValue $bag 'DEVPKEY_Device_BusNumber') `
             (Get-BagValue $bag 'DEVPKEY_Device_Address')
+        $bdf = $location.Slot
 
         if (-not (Test-SlotMatch $bdf $slotFilter)) { continue }
 
@@ -174,6 +175,10 @@ function Get-PciDevice {
         [pscustomobject]@{
             PSTypeName       = 'WinLspci.PciDevice'
             Slot             = $bdf
+            # PCI segment. 0 on ordinary machines; Hyper-V/Azure SR-IOV VFs
+            # carry it in the upper bits of Windows' bus number, and then the
+            # Slot shows it too (556f:00:02.0), as lspci does.
+            Domain           = $location.Domain
             VendorId         = $ven
             DeviceId         = $dev
             SubsystemVendorId = $subVen

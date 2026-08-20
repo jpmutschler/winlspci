@@ -126,7 +126,7 @@ Measured against Linux `lspci`, not aspirational.
 | `-vvv` | `-vvv` | Everything `-vv` shows, then every property Windows exposes, **plus an explicit list of what is missing** |
 | `-n` | `-n` | IDs only |
 | `-nn` | `-nn` | Names and IDs |
-| `-D` | `-D` | Domain prefix. Always `0000` — Windows' PnP data carries no segment number |
+| `-D` | `-D` | Domain on every line. `0000` on ordinary machines. Hyper-V / Azure SR-IOV functions carry the PCI segment in the upper bits of Windows' bus number (`PCI bus 5598976` = segment `556f`, bus `00`); those always show it, as lspci does: `556f:00:02.0` |
 | `-k` | `-k` | Driver and version (the same lines `-v` shows) |
 | `-tv`, `-nnk`, `-vvnn` … | same | Short flags combine, as in lspci; they are **case-sensitive** (`-D` ≠ `-d`) |
 

@@ -73,17 +73,19 @@ function Test-SlotMatch {
     .SYNOPSIS
       Does a device's bus:device.function satisfy a parsed -s filter?
     .DESCRIPTION
-      Windows' PnP data carries no PCI segment, so every device is in domain 0:
-      a filter naming any other domain matches nothing, which is also what
-      lspci reports on a single-segment machine.
+      The slot is "[dddd:]bb:dd.f"; a missing domain is 0. An unspecified
+      filter field matches anything, so `-s 00:02.0` finds the device in every
+      domain and `-s 556f:00:02.0` only in that one -- as lspci.
     #>
     param([string]$Bdf, $Filter)
     if ($null -eq $Filter) { return $true }
-    if ($Bdf -notmatch '^([0-9a-f]{2}):([0-9a-f]{2})\.(\d)$') { return $false }
-    $bus = [Convert]::ToInt32($Matches[1], 16)
-    $dev = [Convert]::ToInt32($Matches[2], 16)
-    $fun = [int]$Matches[3]
-    if ($null -ne $Filter.Domain -and $Filter.Domain -ne 0) { return $false }
+    if ($Bdf -notmatch '^(?:([0-9a-f]{4}):)?([0-9a-f]{2}):([0-9a-f]{2})\.(\d)$') { return $false }
+    $domain = 0
+    if ($Matches[1]) { $domain = [Convert]::ToInt32($Matches[1], 16) }
+    $bus = [Convert]::ToInt32($Matches[2], 16)
+    $dev = [Convert]::ToInt32($Matches[3], 16)
+    $fun = [int]$Matches[4]
+    if ($null -ne $Filter.Domain -and $Filter.Domain -ne $domain) { return $false }
     if ($null -ne $Filter.Bus -and $Filter.Bus -ne $bus) { return $false }
     if ($null -ne $Filter.Device -and $Filter.Device -ne $dev) { return $false }
     if ($null -ne $Filter.Function -and $Filter.Function -ne $fun) { return $false }
