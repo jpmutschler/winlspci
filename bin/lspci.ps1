@@ -46,6 +46,7 @@ Machine-readable: -m   -mm   -Json   -Csv   -Delimited [-Delimiter <d>] [-Header
 Attributes:       -Attribute <names>   -Match <regex>   -PresentOnly   -ListAttributes
 Lab:              -Baseline <file>   -Diff <file> [-IgnoreAttribute <names>] [-IncludeVolatile]
                   -Watch <seconds> [-Iterations <n>]   -i <pci.ids>
+Remote:           -ComputerName <host,host,...> [-Credential <user>]   (WinRM)
 Other:            -Version   --help
 
 Short flags combine as in lspci (-tv, -nnk, -vvnn). Long names are
@@ -73,6 +74,7 @@ $opt = @{
     Header = $false; Json = $false; Downtrained = $false; Version = $false
     Machine = 0; IdsFile = $null
     Baseline = $null; Diff = $null; IgnoreAttribute = @(); IncludeVolatile = $false; Watch = 0; Iterations = 0
+    ComputerName = @(); Credential = $null
 }
 
 # Long options: name -> takes a value? Matched case-insensitively, exact or
@@ -86,6 +88,7 @@ $longOptions = [ordered]@{
     'ShowDriver' = $false; 'Version' = $false; 'Help' = $false
     'Baseline' = $true; 'Diff' = $true; 'IgnoreAttribute' = $true; 'IncludeVolatile' = $false
     'Watch' = $true; 'Iterations' = $true; 'IdsFile' = $true
+    'ComputerName' = $true; 'Credential' = $true
 }
 
 # Short flags are CASE-SENSITIVE, as in lspci: -D is domain, -d is a filter.
@@ -140,6 +143,16 @@ function Set-LongOption {
         'Watch'           { $opt.Watch = "$Value" }
         'Iterations'      { $opt.Iterations = "$Value" }
         'IdsFile'         { $opt.IdsFile = "$Value" }
+        'ComputerName'    {
+            # Keep blanks so they can be REFUSED: `-ComputerName %NODE%` with
+            # the variable unset must not quietly list this machine.
+            $names = @("$Value" -split ',' | ForEach-Object { $_.Trim() })
+            if ($names.Count -eq 0 -or @($names | Where-Object { $_ -eq '' }).Count -gt 0) {
+                Fail "-ComputerName contains an empty name ('$Value'); refusing to fall back to the local machine silently" 64
+            }
+            $opt.ComputerName += $names
+        }
+        'Credential'      { $opt.Credential = "$Value" }
     }
 }
 
@@ -317,6 +330,11 @@ while ($i -lt $argv.Count) {
 
 Import-Module (Join-Path $PSScriptRoot '..\winlspci.psd1') -Force
 
+if ($env:WINLSPCI_FIXTURE) {
+    # Once per process, on STDERR so -Json / -m / -Delimited stay parseable.
+    [Console]::Error.WriteLine("lspci: WARNING: enumerating from fixture '$env:WINLSPCI_FIXTURE' (WINLSPCI_FIXTURE is set). This is NOT this machine's hardware.")
+}
+
 if ($opt.Version) {
     $m = Get-Module winlspci
     Write-Output "winlspci $($m.Version)"
@@ -352,14 +370,32 @@ foreach ($numeric in @(@('Watch', $opt.Watch), @('Iterations', $opt.Iterations))
 if ($argv -contains '-Watch' -and $opt.Watch -eq 0) { Fail '-Watch needs an interval of at least 1 second' 64 }
 
 # Sorted by slot, as lspci does. Windows enumerates in an order that looks
-# arbitrary to a reader scanning for a bus number.
+# arbitrary to a reader scanning for a bus number. With several computers,
+# by computer first.
+$enumArgs = @{ Device = $opt.Device; Slot = $opt.Slot }
+$multiNode = ($opt.ComputerName.Count -gt 1)
+if ($opt.ComputerName.Count -gt 0) {
+    $enumArgs['ComputerName'] = $opt.ComputerName
+    if ($opt.Credential) {
+        # Interactive by design: a password on the command line would land in
+        # shell history. Get-Credential prompts for it. Under -NonInteractive,
+        # a redirected stdin, or a cancelled prompt it returns nothing or
+        # throws; either way we must NOT connect without the credential the
+        # user asked for and then report "unreachable". Scripts should use
+        # the module's -Credential with a PSCredential they already hold.
+        $cred = $null
+        try { $cred = Get-Credential -UserName $opt.Credential -Message "Credential for $($opt.ComputerName -join ', ')" } catch { $cred = $null }
+        if ($null -eq $cred) { Fail '-Credential needs an interactive prompt for the password (none available, or cancelled); from a script, use Get-PciDevice -Credential <PSCredential>' 64 }
+        $enumArgs['Credential'] = $cred
+    }
+}
 try {
-    $devices = @(Get-PciDevice -Device $opt.Device -Slot $opt.Slot | Sort-Object Slot)
+    $devices = @(Get-PciDevice @enumArgs | Sort-Object ComputerName, Slot)
 } catch {
     # Selector validation errors (bad hex in -s / -d) are usage errors (64);
     # a WMI/CIM failure during enumeration is not the user's doing (70), and
     # must never be confused with "no devices".
-    if ($_.Exception.Message -like 'PCI enumeration failed:*') { Fail $_.Exception.Message 70 }
+    if ($_.Exception.Message -like 'PCI enumeration failed*') { Fail $_.Exception.Message 70 }
     Fail $_.Exception.Message 64
 }
 
@@ -490,8 +526,19 @@ if ($opt.Attribute.Count -gt 0 -or $opt.Match -or $opt.PresentOnly) {
     exit 0
 }
 
+$dataSource = Get-PciDataSource
 if ($opt.Tree) {
-    Format-PciTree -Devices $devices -Numeric $opt.Numeric
+    # Human output: carries its provenance on stdout like the plain listing.
+    if ($dataSource -ne 'windows-pnp') { Write-Output "# source: $dataSource -- a recording, NOT this machine's hardware" }
+    if ($multiNode) {
+        # One tree per machine, labelled; parent ids do not cross machines.
+        foreach ($group in ($devices | Group-Object ComputerName | Sort-Object Name)) {
+            Write-Output "=== $($group.Name) ==="
+            Format-PciTree -Devices @($group.Group) -Numeric $opt.Numeric
+        }
+    } else {
+        Format-PciTree -Devices $devices -Numeric $opt.Numeric
+    }
     exit $exitCode
 }
 
@@ -501,7 +548,13 @@ if ($opt.Machine -gt 0) {
 }
 
 if ($opt.Delimited) {
-    $devices | Format-PciDelimited -Delimiter $opt.Delimiter -Header:$opt.Header
+    if ($multiNode) {
+        $fields = @('ComputerName', 'Slot', 'VendorId', 'DeviceId', 'ClassCode', 'ClassName', 'VendorName', 'DeviceName',
+                    'Revision', 'LinkSpeed', 'LinkWidth', 'MaxLinkSpeed', 'MaxLinkWidth', 'Driver', 'Status')
+        $devices | Format-PciDelimited -Field $fields -Delimiter $opt.Delimiter -Header:$opt.Header
+    } else {
+        $devices | Format-PciDelimited -Delimiter $opt.Delimiter -Header:$opt.Header
+    }
     exit $exitCode
 }
 
@@ -519,7 +572,7 @@ if ($opt.Json) {
         winlspciVersion = "$((Get-Module winlspci).Version)"
         generatedAt     = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
         computerName    = $env:COMPUTERNAME
-        source          = 'windows-pnp'
+        source          = Get-PciDataSource
         note            = ('Windows PnP/PCI enumeration. No configuration-space access: ' +
                            'no hex dumps, no capability walks, no ASPM or AER detail.')
         filter          = @{ device = $opt.Device; slot = $opt.Slot; downtrained = [bool]$opt.Downtrained }
@@ -536,5 +589,9 @@ if ($devices.Count -eq 0) {
         Write-Output 'no PCI devices enumerated'
     }
 }
-$devices | Format-Lspci -Verbosity $opt.Verbosity -Numeric $opt.Numeric
+# The human listing carries its provenance on STDOUT too: the stderr banner
+# can be (legitimately) silenced, and this text is what gets pasted into a
+# ticket. The machine formats already carry `source`.
+if ($dataSource -ne 'windows-pnp') { Write-Output "# source: $dataSource -- a recording, NOT this machine's hardware" }
+$devices | Format-Lspci -Verbosity $opt.Verbosity -Numeric $opt.Numeric -ShowComputer:$multiNode
 exit $exitCode

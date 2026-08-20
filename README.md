@@ -123,6 +123,18 @@ Import-Module $env:LOCALAPPDATA\Programs\winlspci\winlspci.psd1
 Get-PciDevice -Device '10de:' | Format-Lspci -Verbosity 2
 ```
 
+From the PowerShell Gallery (once published — see `packaging/README.md`), the
+module lands in a `PSModulePath` directory with no `bin\` on PATH;
+`Install-LspciShim` writes a two-line `lspci.cmd` into
+`%LOCALAPPDATA%\Microsoft\WindowsApps` (usually on the user's PATH — it warns
+if not — and writable only by that user) pointing at the installed CLI:
+
+```powershell
+Install-Module winlspci -Scope CurrentUser
+Install-LspciShim          # -Remove to undo
+lspci -nn
+```
+
 **Requires Windows PowerShell 5.1** — the one that ships with Windows. Written
 to 5.1 syntax on purpose (no ternary, no `??`, no `-AsHashtable`): a tool that
 tells you what is in the machine should not need an install before it runs.
@@ -192,6 +204,7 @@ typed is worse than one that says no.) Anything else unknown exits 64.
 | `-Downtrained` | Only devices below their maximum speed or width (the `Downtrained` property). A filter: exits 1 when nothing is |
 | `-Baseline <file>` / `-Diff <file>` | Save the enumeration; later, report what appeared, disappeared or changed (exit 3 if anything did). `PowerState` is ignored unless `-IncludeVolatile`; `-IgnoreAttribute DriverVersion,Link*` to leave out what you expect to move |
 | `-Watch <seconds>` | Re-enumerate on an interval and print only the changes, timestamped — hot-plug, retimer bring-up, link flaps. `-Iterations <n>` to stop after n passes |
+| `-ComputerName <a,b,c>` | Enumerate other machines over WinRM (`-Credential <user>` prompts). Lines are prefixed `host:`, `-t` prints one tree per host, every object carries `ComputerName` |
 
 ---
 
@@ -370,6 +383,41 @@ From the module: `Export-PciBaseline`, `Compare-PciBaseline` (file vs now),
 
 ---
 
+## Remote machines
+
+Everything the module reads comes through `Get-CimInstance` /
+`Invoke-CimMethod`, and both take a CIM session — so a fleet is one
+parameter away:
+
+```
+PS> lspci -ComputerName node1,node2,node3 -Downtrained
+node2: 81:00.0 Non-Volatile memory controller: Samsung ... (rev 00)
+        LnkSta: 8GT/s x2 (max 16GT/s x4)  <-- DOWNTRAINED (speed, width)
+
+PS> Get-PciDevice -ComputerName node1,node2,node3 | Where-Object Downtrained |
+        Select-Object ComputerName, Slot, LinkSpeed, MaxLinkSpeed, LinkWidth, MaxLinkWidth
+```
+
+- One WinRM session per name (`-Credential <user>` prompts rather than taking a
+  password on the command line — it needs a console; from a script, call
+  `Get-PciDevice -Credential $cred` with a `PSCredential` you already hold).
+  A node that cannot be reached is reported with a warning and skipped; if
+  *none* can, the command fails (exit 70) rather than printing an empty list
+  that looks like "no devices". A blank name is refused rather than quietly
+  meaning "this machine"; duplicate names are enumerated once; a node whose
+  property fetch fails for every device is warned about and dropped.
+- Every object carries `ComputerName` — locally it is this machine's name —
+  so one pipeline can sort, group and diff across hosts. With more than one
+  host the CLI prefixes each device line with `host:`, prints one `-t` tree
+  per host, and leads `-Delimited` with a `ComputerName` column.
+- `Get-PciDevice -CimSession $s` takes sessions you manage yourself — DCOM
+  works too (`New-CimSessionOption -Protocol Dcom`), which is also how the
+  test suite exercises the remote path on a machine without WinRM.
+- pci.ids names are resolved on the machine running the tool; the remote
+  property fetch is serial (sessions are not shared across runspaces).
+
+---
+
 ## Device type, capabilities, slot, power
 
 All four come from DEVPKEYs the PCI bus driver fills from config space at
@@ -451,21 +499,41 @@ c05b:00:00.0 Non-Volatile memory controller [0108]: Microsoft Corporation ASAP N
 
 ## Topology
 
-`-t` builds a real tree from `DEVPKEY_Device_Parent`, so an endpoint appears
-under the root port that carries it, with its link state inline — which is
-where a downtrained device becomes obvious:
+`-t` builds a real tree from `DEVPKEY_Device_Parent` in lspci's shape: one
+root per `[domain:bus]`, bridges with the secondary/subordinate bus range
+their descendants occupy, children under the bridge token, link state inline
+— which is where a downtrained device becomes obvious:
 
 ```
--00:06.0  11th Gen Core Processor PCIe Controller
- \-01:00.0  Gold P31/BC711/PC711 NVMe Solid State Drive  (8GT/s x4)
--00:1d.0  Tiger Lake-LP PCI Express Root Port #9
- \-f3:00.0  GA107M [GeForce RTX 3050 Ti Mobile]  (8GT/s x4)
+-[0000:00]-+-00:00.0  Tiger Lake-UP3/H35 4 cores Host Bridge/DRAM Registers
+           +-00:06.0-[01]  11th Gen Core Processor PCIe Controller  [root port]
+           |           \-01:00.0  Gold P31/BC711/PC711 NVMe Solid State Drive  (8GT/s x4)
+           +-00:1c.0-[f2]  500 Series Chipset Family PCI Express Root Port #6  [root port]
+           |           \-f2:00.0  Wi-Fi 6 AX200  (5GT/s x1)
+           \-00:1d.0-[f3]  500 Series Chipset Family PCI Express Root Port #9  [root port]
+                       \-f3:00.0  GA107M [GeForce RTX 3050 Ti Mobile]  (8GT/s x4)
 ```
 
-A device whose parent is not itself a PCI device becomes a root rather than
-being dropped. An incomplete tree that *looks* complete is worse than an
-obviously ragged one, and a test asserts every enumerated device appears
-exactly once.
+A switch renders as its hierarchy — `01:00.0-[02-04]  … [upstream port]`,
+then `02:01.0-[03] … [downstream port]` and the endpoints under each — which
+is what the type tags and bus ranges are for.
+
+Unlike lspci, every device keeps its full `bus:device.function` and stays on a
+line of its own (lspci collapses single-child bridges onto one line); the
+descriptions are shown, and "every enumerated device appears exactly once" is
+pinned by a test. A device whose parent is not itself a PCI device becomes a
+root rather than being dropped, and a node the walk cannot reach (a parent
+cycle) is rendered as a root of its own. An incomplete tree that *looks*
+complete is worse than an obviously ragged one.
+
+Windows reports link state on the downstream device, not on the bridge. A
+bridge with exactly one child that reports a link shows that child's link as
+`DownstreamSlot` / `DownstreamLinkSpeed` / `DownstreamLinkWidth`, and `-v`
+says *"LnkSta: not reported by this device (downstream 01:00.0 reports 8GT/s
+x4)"* — whose link it is stays explicit. Because of this, `-s` and `-d` are
+*display* filters: the whole machine is enumerated and the selector applied
+last, so `lspci -s 00:1c.0 -v` shows the same downstream link as the full
+listing (a filtered query costs about the same as a full one).
 
 ---
 
@@ -505,6 +573,22 @@ renders as a machine with no PCI bus. A test pins its row count against a
 client-side `-like`. Parsing `pci.ids` is ~110ms (it was ~50ms before
 subsystem names were indexed; +60ms for real subsystem names was judged worth
 it) and not worth optimising further.
+
+**The per-device fetch is parallel.** Each `GetDeviceProperties` call is
+~14ms of fixed round-trip latency plus ~0.9ms per key, and the module asks
+for 34 keys; serial, that is ~1.1s for 24 devices and ~12s for 300. The fixed
+part is pure latency, so a RunspacePool of 8 (PowerShell 5.1 has no
+`ForEach-Object -Parallel`) overlaps it: measured 1.05s → 0.47s at 24
+devices, identical output. A two-call "core keys now, detail keys on `-vv`"
+split was measured and rejected — the fixed cost is paid twice, so it made
+`-vv` slower than fetching everything once. `Get-PciDevice -Serial` or
+`WINLSPCI_SERIAL=1` restores the serial path if a box ever misbehaves.
+
+**`WINLSPCI_FIXTURE=<file>`** replays a recorded fixture instead of the
+machine. It exists so the test suite's CLI child processes do not each pay a
+live enumeration; it is not a user feature, and it cannot pass for one: the
+CLI prints a banner on stderr, and `source` in `-Json` and baseline files
+becomes `fixture:<name>`.
 
 ---
 
@@ -547,6 +631,8 @@ Public\                  exported functions, one file per function or cohesive g
   Format-PciDelimited.ps1  -Delimited
   Compare-PciBaseline.ps1  Export-PciBaseline, Compare-PciBaseline, Compare-PciDeviceSet
   PciIds.ps1               pci.ids parse (vendors, devices, subsystems, classes, prog-ifs), lookups, Update-PciIds
+  Install-LspciShim.ps1    puts `lspci` on PATH for Install-Module users
+packaging\               release notes: Gallery, scoop manifest, winget, signing
 Private\                 internal helpers
   DeviceProperties.ps1     DEVPKEY fetch, BDF, class-from-hardware-id
   Selectors.ps1            -s and -d parsing

@@ -6,8 +6,8 @@
         LnkSta: 8GT/s x4 (max 8GT/s x4)
         Driver: stornvme (10.0.26100.8972)
 # lspci -t -n
--00:1c.0 [8086:a0bd]
- \-01:00.0 [1c5c:174a]  (8GT/s x4)
+-[0000:00]-\-00:1c.0 [8086:a0bd]
+                  \-01:00.0 [1c5c:174a]  (8GT/s x4)
 # attributes (names excluded)
 00:1c.0 Slot=00:1c.0 present=True
 00:1c.0 Domain=0 present=True
@@ -31,6 +31,9 @@
 00:1c.0 MaxLinkSpeedRaw= present=False
 00:1c.0 MaxLinkWidth= present=False
 00:1c.0 Downtrained=False present=True
+00:1c.0 DownstreamSlot= present=False
+00:1c.0 DownstreamLinkSpeed= present=False
+00:1c.0 DownstreamLinkWidth= present=False
 00:1c.0 MaxPayloadSize= present=False
 00:1c.0 MaxPayloadSizeSupported= present=False
 00:1c.0 MaxReadRequestSize= present=False
@@ -85,6 +88,9 @@
 01:00.0 MaxLinkSpeedRaw=3 present=True
 01:00.0 MaxLinkWidth=4 present=True
 01:00.0 Downtrained=False present=True
+01:00.0 DownstreamSlot= present=False
+01:00.0 DownstreamLinkSpeed= present=False
+01:00.0 DownstreamLinkWidth= present=False
 01:00.0 MaxPayloadSize=256 present=True
 01:00.0 MaxPayloadSizeSupported=512 present=True
 01:00.0 MaxReadRequestSize=512 present=True

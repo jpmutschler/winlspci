@@ -9,9 +9,9 @@
         LnkSta: not reported by this device
         Driver: e2fnexpress  STATUS=Unknown PROBLEM=45
 # lspci -t -n
--00:1c.0 [8086:a0bd]
- +-01:00.0 [10de:2684]  (16GT/s x16)
- \-02:00.0 [8086:15f3]
+-[0000:00]-\-00:1c.0 [8086:a0bd]
+                  +-01:00.0 [10de:2684]  (16GT/s x16)
+                  \-02:00.0 [8086:15f3]
 # attributes (names excluded)
 00:1c.0 Slot=00:1c.0 present=True
 00:1c.0 Domain=0 present=True
@@ -35,6 +35,9 @@
 00:1c.0 MaxLinkSpeedRaw= present=False
 00:1c.0 MaxLinkWidth= present=False
 00:1c.0 Downtrained=False present=True
+00:1c.0 DownstreamSlot= present=False
+00:1c.0 DownstreamLinkSpeed= present=False
+00:1c.0 DownstreamLinkWidth= present=False
 00:1c.0 MaxPayloadSize= present=False
 00:1c.0 MaxPayloadSizeSupported= present=False
 00:1c.0 MaxReadRequestSize= present=False
@@ -89,6 +92,9 @@
 01:00.0 MaxLinkSpeedRaw=4 present=True
 01:00.0 MaxLinkWidth=16 present=True
 01:00.0 Downtrained=False present=True
+01:00.0 DownstreamSlot= present=False
+01:00.0 DownstreamLinkSpeed= present=False
+01:00.0 DownstreamLinkWidth= present=False
 01:00.0 MaxPayloadSize= present=False
 01:00.0 MaxPayloadSizeSupported= present=False
 01:00.0 MaxReadRequestSize= present=False
@@ -143,6 +149,9 @@
 02:00.0 MaxLinkSpeedRaw= present=False
 02:00.0 MaxLinkWidth= present=False
 02:00.0 Downtrained=False present=True
+02:00.0 DownstreamSlot= present=False
+02:00.0 DownstreamLinkSpeed= present=False
+02:00.0 DownstreamLinkWidth= present=False
 02:00.0 MaxPayloadSize= present=False
 02:00.0 MaxPayloadSizeSupported= present=False
 02:00.0 MaxReadRequestSize= present=False

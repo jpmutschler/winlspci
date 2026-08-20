@@ -13,10 +13,18 @@ function Format-Lspci {
     param(
         [Parameter(ValueFromPipeline)]$Device,
         [int]$Verbosity = 0,
-        [int]$Numeric = 2
+        [int]$Numeric = 2,
+        # Prefix every header line with "<ComputerName>: " -- for a stream
+        # that mixes machines (Get-PciDevice -ComputerName a,b,c).
+        [switch]$ShowComputer
     )
     process {
         foreach ($d in @($Device)) {
+            $hostPrefix = ''
+            if ($ShowComputer) {
+                $cn = ConvertTo-SafeText (Get-Field $d 'ComputerName')
+                if ($cn) { $hostPrefix = "${cn}: " }
+            }
             # Get-Field, not dot access: under StrictMode a trimmed object
             # (Select-Object Slot,DeviceName) must render with gaps, not crash.
             $vendorId = Get-Field $d 'VendorId'
@@ -58,7 +66,7 @@ function Format-Lspci {
                 $piName = ConvertTo-SafeText (Get-Field $d 'ProgIfName')
                 if ($null -ne $pi -and $piName) { $progIfPart = (' (prog-if {0:x2} [{1}])' -f [int]$pi, $piName) }
             }
-            Write-Output ("{0} {1}: {2}{3}{4}" -f (Get-Field $d 'Slot'), $classPart, $ident, $rev, $progIfPart)
+            Write-Output ("{5}{0} {1}: {2}{3}{4}" -f (Get-Field $d 'Slot'), $classPart, $ident, $rev, $progIfPart, $hostPrefix)
 
             if ($Verbosity -ge 1) {
                 # lspci prints the chassis slot right under the header line.
@@ -99,6 +107,12 @@ function Format-Lspci {
                     if ($null -ne $typeRaw -and [int]$typeRaw -eq 4) { $why = 'root-complex integrated endpoint: no link' }
                     elseif ($null -ne $typeRaw -and [int]$typeRaw -in 5, 13) { $why = 'Windows treats this PCIe device as conventional PCI: no link reported' }
                     elseif ($null -ne $typeRaw -and [int]$typeRaw -in 0, 1, 6, 7) { $why = 'Windows reports this as a conventional PCI device: no PCIe link' }
+                    # A bridge's link IS its child's link; say whose it is.
+                    $dsSlot = Get-Field $d 'DownstreamSlot'
+                    if ($dsSlot) {
+                        $dsW = Get-Field $d 'DownstreamLinkWidth'; $dsWText = 'x?'; if ($null -ne $dsW) { $dsWText = "x$dsW" }
+                        $why += " (downstream $dsSlot reports $(Get-Field $d 'DownstreamLinkSpeed') $dsWText)"
+                    }
                     Write-Output "        LnkSta: $why"
                 }
 

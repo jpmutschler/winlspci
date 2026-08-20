@@ -1,0 +1,16 @@
+{
+    "version": "0.5.0",
+    "description": "lspci for Windows, without a kernel driver. Reads the PnP/PCI enumeration: identity, class, BDF, negotiated and maximum link state, MPS/MRRS, driver binding, topology.",
+    "homepage": "https://github.com/jpmutschler/winlspci",
+    "license": "MIT",
+    "url": "https://github.com/jpmutschler/winlspci/archive/refs/tags/v0.5.0.zip",
+    "hash": "FILL-IN: (Get-FileHash winlspci-0.5.0.zip -Algorithm SHA256).Hash -- see packaging/README.md",
+    "extract_dir": "winlspci-0.5.0",
+    "bin": "bin\\lspci.cmd",
+    "checkver": "github",
+    "autoupdate": {
+        "url": "https://github.com/jpmutschler/winlspci/archive/refs/tags/v$version.zip",
+        "extract_dir": "winlspci-$version"
+    },
+    "notes": "Requires Windows PowerShell 5.1 (ships with Windows). Run: lspci -nn"
+}

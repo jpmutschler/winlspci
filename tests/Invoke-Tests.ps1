@@ -90,19 +90,35 @@ function Invoke-Cli {
       (correct, expected) refusal message on stderr would terminate the test.
       Relax the preference just for the call; stderr lines are stringified into
       the output so a test can look for the message.
+
+      By default the child runs against the recorded laptop fixture
+      (WINLSPCI_FIXTURE), so a CLI test costs ~0.7s instead of a ~3s live
+      enumeration and sees the same inventory on every machine; tests that
+      must hit real hardware pass -Live. The fixture banner the CLI prints on
+      stderr is kept separately as .Banner and filtered out of .Output.
     #>
-    param([string[]]$CliArgs = @())
+    param([string[]]$CliArgs = @(), [switch]$Live)
     $prev = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
+    $prevFixture = $env:WINLSPCI_FIXTURE
     try {
-        $out = @(& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $cli @CliArgs 2>&1 |
+        if ($Live) { Remove-Item Env:WINLSPCI_FIXTURE -ErrorAction SilentlyContinue }
+        else { $env:WINLSPCI_FIXTURE = $script:cliFixturePath }
+        $raw = @(& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $cli @CliArgs 2>&1 |
             ForEach-Object { "$_" })
         $code = $LASTEXITCODE
     } finally {
         $ErrorActionPreference = $prev
+        if ($null -ne $prevFixture) { $env:WINLSPCI_FIXTURE = $prevFixture } else { Remove-Item Env:WINLSPCI_FIXTURE -ErrorAction SilentlyContinue }
     }
-    return [pscustomobject]@{ Output = $out; Text = ($out -join "`n"); Code = $code }
+    # The fixture banner (stderr) and the "# source:" provenance line (stdout,
+    # human listing only) are kept apart from the data lines under test.
+    $banner = @($raw | Where-Object { $_ -like 'lspci: WARNING: enumerating from fixture*' })
+    $provenance = @($raw | Where-Object { $_ -like '# source: fixture:*' })
+    $out = @($raw | Where-Object { $_ -notlike 'lspci: WARNING: enumerating from fixture*' -and $_ -notlike '# source: fixture:*' })
+    return [pscustomobject]@{ Output = $out; Text = ($out -join "`n"); Code = $code; Banner = $banner; Provenance = $provenance }
 }
+$script:cliFixturePath = Join-Path $PSScriptRoot 'fixtures\tigerlake-laptop.json'
 
 # A fully-populated fake, so formatter tests do not depend on the machine.
 function New-FakeDevice {
@@ -285,7 +301,7 @@ function Get-FixtureGolden {
     $lines += @(Format-PciTree -Devices $Devs -Numeric 1)
     $lines += '# attributes (names excluded)'
     $lines += @($Devs | Sort-Object Slot | ConvertTo-PciAttributeRecord |
-        Where-Object { $_.Attribute -notlike '*Name' } |
+        Where-Object { $_.Attribute -notlike '*Name' } |      # pci.ids names, and ComputerName (machine-specific)
         ForEach-Object { "$($_.Slot) $($_.Attribute)=$($_.Value) present=$($_.Present)" })
     return $lines
 }
@@ -456,6 +472,163 @@ It 'the DeviceType map covers every bridge type and nothing renders a bare numbe
 It 'a fixture never leaks into the live enumeration' {
     Use-Fixture 'phantom' { $null = Get-PciDevice }
     Assert-True (@(Get-PciDevice).Count -ne 1 -or (Get-PciDevice).Slot -ne '00:1c.0') 'fixture still active after Use-Fixture'
+    Assert-Equal 'windows-pnp' (Get-PciDataSource)
+    Use-Fixture 'phantom' { Assert-Equal 'fixture:phantom.json' (Get-PciDataSource) }
+}
+
+It 'switch-hierarchy: lspci-shaped tree with bus ranges, type tags, and the downstream link on bridges' {
+    Use-Fixture 'switch-hierarchy' {
+        $devs = @(Get-PciDevice)
+        Assert-Equal 7 $devs.Count
+        $lines = @(Format-PciTree -Devices $devs -Numeric 1)
+        Assert-Equal 7 $lines.Count 'one line per device'
+        Assert-True ($lines[0] -like '-[[]0000:00]-\-00:1c.0-[[]01-04]*[[]root port]*') "root group + range: $($lines[0])"
+        Assert-True (($lines -join "`n") -like '*01:00.0-[[]02-04]*[[]upstream port]*') 'upstream port range 02-04'
+        Assert-True (($lines -join "`n") -like '*02:01.0-[[]03]*[[]downstream port]*') 'downstream port range 03'
+        Assert-True (($lines | Where-Object { $_ -like '*02:03.0*' })[0] -notlike '*02:03.0-[[]*') 'a bridge with no children has no range'
+        # Downstream link: DS1 has one linked child (03:00.0 16GT/s x4).
+        $ds1 = $devs | Where-Object Slot -eq '02:01.0'
+        Assert-Equal '03:00.0' $ds1.DownstreamSlot
+        Assert-Equal '16GT/s' $ds1.DownstreamLinkSpeed
+        Assert-Equal 4 $ds1.DownstreamLinkWidth
+        Assert-Equal $null ($devs | Where-Object Slot -eq '02:03.0').DownstreamSlot 'no child: no downstream'
+        $up = $devs | Where-Object Slot -eq '01:00.0'
+        Assert-Equal $null $up.DownstreamSlot 'three children, none with a link: no single downstream'
+        Assert-Equal '16GT/s' $up.LinkSpeed 'a bridge''s OWN link is never overwritten'
+        $out = @($ds1 | Format-Lspci -Verbosity 1) -join "`n"
+        Assert-True ($out -like '*LnkSta: not reported by this device (downstream 03:00.0 reports 16GT/s x4)*') $out
+        # -s / -d are display filters: selecting the bridge alone must still
+        # show its child's link, and a vendor filter must not hide it either.
+        $only = @(Get-PciDevice -Slot '02:01.0')
+        Assert-Equal 1 $only.Count
+        Assert-Equal '03:00.0' $only[0].DownstreamSlot 'downstream link must survive a slot selector'
+        $byVendor = @(Get-PciDevice -Device '11f8:')
+        Assert-Equal '03:00.0' ($byVendor | Where-Object Slot -eq '02:01.0').DownstreamSlot 'downstream link must survive a vendor selector (the child is Samsung)'
+    }
+}
+
+It 'the WINLSPCI_FIXTURE env var is not sticky in a module session' {
+    $prev = $env:WINLSPCI_FIXTURE
+    try {
+        $env:WINLSPCI_FIXTURE = Join-Path $fixtureDir 'phantom.json'
+        Assert-Equal 1 @(Get-PciDevice).Count 'env fixture active'
+        Assert-Equal 'fixture:phantom.json' (Get-PciDataSource)
+        Remove-Item Env:WINLSPCI_FIXTURE
+        Assert-True (@(Get-PciDevice).Count -ne 1) 'clearing the env var must return to live data'
+        Assert-Equal 'windows-pnp' (Get-PciDataSource)
+        $env:WINLSPCI_FIXTURE = Join-Path $fixtureDir 'azure-sriov.json'
+        Assert-Equal 3 @(Get-PciDevice).Count 'changing the env var reloads'
+    } finally {
+        if ($null -ne $prev) { $env:WINLSPCI_FIXTURE = $prev } else { Remove-Item Env:WINLSPCI_FIXTURE -ErrorAction SilentlyContinue }
+        & (Get-Module winlspci) { Set-PciFixture -Clear }
+    }
+}
+
+It 'Compare-PciBaseline warns when the baseline and the enumeration have different sources' {
+    $tmp = [IO.Path]::GetTempFileName()
+    try {
+        Use-Fixture 'phantom' { Export-PciBaseline -Path $tmp -Device @(Get-PciDevice) }
+        $warnings = @()
+        $null = Compare-PciBaseline -Path $tmp -Device @(New-FakeDevice) -WarningVariable warnings -WarningAction SilentlyContinue
+        Assert-True (@($warnings | Where-Object { "$_" -like '*baseline source is*fixture:phantom.json*' }).Count -eq 1) "expected a source-mismatch warning, got: $($warnings -join ' | ')"
+    } finally { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
+}
+
+It 'every device carries ComputerName; a remote session enumerates the same machine identically' {
+    $live = @(Get-PciDevice)     # this section runs before $devices is populated
+    foreach ($d in $live) { Assert-Equal $env:COMPUTERNAME $d.ComputerName "$($d.Slot)" }
+    # DCOM needs no WinRM, so a localhost session is the remote path on any box.
+    $s = $null
+    try { $s = New-CimSession -ComputerName localhost -SessionOption (New-CimSessionOption -Protocol Dcom) -ErrorAction Stop }
+    catch { Skip-Test "no DCOM session to localhost: $($_.Exception.Message.Split([char]10)[0])" }
+    try {
+        $rem = @(Get-PciDevice -CimSession $s)
+        Assert-Equal $live.Count $rem.Count 'session enumerates the same devices'
+        Assert-Equal 'localhost' $rem[0].ComputerName 'ComputerName is the session target'
+        Assert-Equal 0 @(Compare-PciDeviceSet -Before $live -After $rem -IgnoreAttribute ComputerName).Count 'same data through a session'
+        $out = @($rem[0] | Format-Lspci -Verbosity 0 -ShowComputer)[0]
+        Assert-True ($out.StartsWith('localhost: ')) "-ShowComputer prefix: $out"
+        $out = @($rem[0] | Format-Lspci -Verbosity 0)[0]
+        Assert-True (-not $out.StartsWith('localhost')) 'no prefix without -ShowComputer'
+    } finally { Remove-CimSession $s -ErrorAction SilentlyContinue }
+}
+
+It 'an unreachable -ComputerName fails loudly rather than returning an empty list' {
+    $bogusHost = 'no-such-host-winlspci-test'   # a variable, so the analyzer does not read it as a hardcoded target
+    Assert-Throws { Get-PciDevice -ComputerName $bogusHost -WarningAction SilentlyContinue } -Like 'PCI enumeration failed: none of the requested computers*'
+}
+
+It 'a blank -ComputerName is refused, never a silent fall-back to the local machine' {
+    $blank = ''
+    Assert-Throws { Get-PciDevice -ComputerName $blank } -Like '*empty name*'
+    Assert-Throws { Get-PciDevice -ComputerName @('  ') } -Like '*empty name*'
+    $r = Invoke-Cli @('-ComputerName', '') -Live
+    Assert-True ($r.Code -ne 0) "CLI must not list the local machine for a blank name (exit $($r.Code))"
+}
+
+It 'a session passed twice is enumerated once, so the downstream-link pass still works' {
+    $s = $null
+    try { $s = New-CimSession -ComputerName localhost -SessionOption (New-CimSessionOption -Protocol Dcom) -ErrorAction Stop }
+    catch { Skip-Test "no DCOM session to localhost: $($_.Exception.Message.Split([char]10)[0])" }
+    try {
+        $once = @(Get-PciDevice -CimSession $s)
+        $twice = @(Get-PciDevice -CimSession $s, $s)
+        Assert-Equal $once.Count $twice.Count 'duplicate session must be de-duplicated'
+        $bridgesWithDownstream = @($twice | Where-Object { $_.DownstreamSlot }).Count
+        Assert-Equal @($once | Where-Object { $_.DownstreamSlot }).Count $bridgesWithDownstream 'downstream links survive'
+    } finally { Remove-CimSession $s -ErrorAction SilentlyContinue }
+}
+
+It 'Install-LspciShim writes a shim that points at this module''s CLI, and removes it' {
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ("winlspci-shim-" + [Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $dir | Out-Null
+    try {
+        $null = Install-LspciShim -Directory $dir -WhatIf
+        Assert-True (-not (Test-Path (Join-Path $dir 'lspci.cmd'))) '-WhatIf must not write'
+        $shim = Install-LspciShim -Directory $dir -WarningAction SilentlyContinue   # dir is not on PATH: warns
+        Assert-True (Test-Path $shim) 'shim written'
+        $content = Get-Content $shim -Raw
+        Assert-True ($content -like "*-File `"$((Resolve-Path (Join-Path $root 'bin\lspci.ps1')).Path)`"*") "shim must point at this checkout's CLI: $content"
+        Assert-True ($content -like '*-NoProfile*') 'shim keeps -NoProfile'
+        Assert-True ($content -notmatch '(?<!%)%(?!%|\*)') 'any % in the path must be doubled for cmd.exe (only %* may stand alone)'
+        Install-LspciShim -Directory $dir -Remove
+        Assert-True (-not (Test-Path $shim)) '-Remove deletes the shim'
+        Assert-Throws { Install-LspciShim -Directory (Join-Path $dir 'missing') } -Like '*does not exist*'
+        # A foreign lspci.cmd is neither overwritten nor removed.
+        Set-Content (Join-Path $dir 'lspci.cmd') '@echo off' -Encoding Ascii
+        Assert-Throws { Install-LspciShim -Directory $dir } -Like '*was not written by Install-LspciShim*'
+        Assert-Throws { Install-LspciShim -Directory $dir -Remove } -Like '*was not written by Install-LspciShim*'
+        Assert-True (Test-Path (Join-Path $dir 'lspci.cmd')) 'foreign file left alone'
+    } finally { Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'packaging\Build-Module.ps1 produces a single-file module with the same commands' {
+    $dist = Join-Path ([IO.Path]::GetTempPath()) ("winlspci-dist-" + [Guid]::NewGuid().ToString('N'))
+    try {
+        & (Join-Path $root 'packaging\Build-Module.ps1') -OutputDirectory $dist | Out-Null
+        $built = Join-Path $dist 'winlspci'
+        Assert-True (Test-Path (Join-Path $built 'winlspci.psm1')) 'psm1 written'
+        Assert-True (-not (Test-Path (Join-Path $built 'Public'))) 'no Public\ in the build'
+        # Import it in a CHILD process so it cannot collide with the source module loaded here.
+        $cmd = "Import-Module '$built\winlspci.psd1'; (Get-Command -Module winlspci | Measure-Object).Count; (Get-PciDevice | Measure-Object).Count"
+        $prev = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+        try { $out = @(& powershell.exe -NoProfile -NonInteractive -Command $cmd 2>&1 | ForEach-Object { "$_" }) } finally { $ErrorActionPreference = $prev }
+        $expected = (Get-Command -Module winlspci | Measure-Object).Count
+        Assert-Equal "$expected" $out[0] "built module exports $($out[0]) commands, source exports $expected ($($out -join ' | '))"
+        Assert-True ([int]$out[1] -gt 0) "built module enumerates ($($out -join ' | '))"
+    } finally { Remove-Item $dist -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'parallel and serial property fetches produce identical devices' {
+    $par = @(Get-PciDevice)
+    $ser = @(Get-PciDevice -Serial)
+    Assert-Equal $par.Count $ser.Count
+    Assert-Equal 0 @(Compare-PciDeviceSet -Before $ser -After $par -IncludeVolatile -IgnoreAttribute PowerState).Count 'parallel must not change a single value'
+    $prev = $env:WINLSPCI_SERIAL
+    try {
+        $env:WINLSPCI_SERIAL = '1'
+        Assert-Equal $par.Count @(Get-PciDevice).Count 'WINLSPCI_SERIAL path enumerates'
+    } finally { if ($null -ne $prev) { $env:WINLSPCI_SERIAL = $prev } else { Remove-Item Env:WINLSPCI_SERIAL -ErrorAction SilentlyContinue } }
 }
 
 # ------------------------------------------------------------ enumeration
@@ -503,7 +676,7 @@ It 'an invalid DEVPKEY makes enumeration FAIL LOUDLY rather than list devices wi
     $saved = & $m { $script:WantedKeys }
     try {
         & $m { $script:WantedKeys = $script:WantedKeys + @('DEVPKEY_Bogus_DoesNotExist') }
-        Assert-Throws { Get-PciDevice } -Like 'PCI enumeration failed:*every device*' 'empty bags must not render as devices'
+        Assert-Throws { Get-PciDevice } -Like 'PCI enumeration failed on *every device*' 'empty bags must not render as devices'
     } finally {
         & $m { param($k) $script:WantedKeys = $k } $saved
     }
@@ -944,6 +1117,7 @@ It 'renders a tree with every device present exactly once' {
     $lines = @(Format-PciTree -Devices $devices -Numeric 1)
     Assert-Equal $devices.Count $lines.Count `
         'a device must appear exactly once -- no drops, no duplicates'
+    Assert-True ($lines[0] -like '-[[]????:??]-*' -or $lines[0] -match '^-\[[0-9a-f]{4}:[0-9a-f]{2}\]-') "first line is a [domain:bus] root group: $($lines[0])"
 }
 
 It 'nests an endpoint under its root port' {
@@ -952,11 +1126,16 @@ It 'nests an endpoint under its root port' {
     if (-not $child) { Skip-Test 'no parent/child pair on this machine' }
     $lines = @(Format-PciTree -Devices $devices -Numeric 1)
     $line = $lines | Where-Object { $_ -like "*$($child.Slot)*" } | Select-Object -First 1
-    # A root is rendered as "-<slot>"; a child is indented and branched. Test
-    # the property (indented, not at column 0) rather than an exact glyph set,
-    # so the assertion survives a cosmetic change to the branch characters.
-    Assert-True (-not $line.StartsWith('-')) "child line is not indented: '$line'"
+    # A root group starts at column 0 with "-[dddd:bb]-"; a child is indented
+    # and branched. Test the property (indented, not at column 0) rather than
+    # an exact glyph set, so the assertion survives a cosmetic change.
+    Assert-True ($line.StartsWith(' ')) "child line is not indented: '$line'"
     Assert-True ($line.Contains('-' + $child.Slot)) "child slot missing: '$line'"
+    # And its parent carries the child's bus as its range.
+    $parent = $devices | Where-Object InstanceId -eq $child.ParentInstanceId
+    $childBus = (Split-Slot $child.Slot).Bus
+    $pline = $lines | Where-Object { $_ -like "*$($parent.Slot)-[[]*" } | Select-Object -First 1
+    if ($parent.IsBridge) { Assert-True ($pline -like "*$($parent.Slot)-[[]*$childBus*]*") "bridge range should cover bus $childBus : $pline" }
 }
 
 It 'a device whose parent is absent still appears, as a root' {
@@ -1255,8 +1434,40 @@ It 'attribute rows use their own column set' {
 
 Write-Host "`nCLI"
 
-It 'an unfiltered listing exits zero' {
-    $r = Invoke-Cli
+# The CLI tests run against the recorded laptop fixture (see Invoke-Cli), so
+# their expectations come from the fixture, not from this machine.
+$script:fx = @(); $script:fxDev = $null; $script:fxSlot = $null; $script:fxParts = $null; $script:fxBdf = $null; $script:fxBus = $null
+Use-Fixture 'tigerlake-laptop' {
+    $script:fx = @(Get-PciDevice | Sort-Object Slot)
+    $script:fxDev = $script:fx | Where-Object Slot -eq '01:00.0'     # the NVMe: has a link, a driver, a subsystem
+    if (-not $script:fxDev) { $script:fxDev = $script:fx[0] }
+    $script:fxSlot = $script:fxDev.Slot
+    $script:fxParts = Split-Slot $script:fxSlot
+    $script:fxBdf = $script:fxParts.Bdf
+    $script:fxBus = $script:fxParts.Bus
+}
+
+It 'CLI tests replay the laptop fixture: banner on stderr, provenance in the data' {
+    $r = Invoke-Cli @('-Json')
+    Assert-Equal 1 $r.Banner.Count "expected one fixture banner, got $($r.Banner.Count)"
+    Assert-True ($r.Banner[0] -like '*NOT this machine''s hardware*') $r.Banner[0]
+    $obj = $r.Text | ConvertFrom-Json
+    Assert-Equal 'fixture:tigerlake-laptop.json' $obj.source 'JSON must say where the data came from'
+    Assert-Equal 24 $obj.count
+    # The human listing says so on STDOUT too (the stderr banner can be silenced).
+    $r = Invoke-Cli @('-s', $fxSlot)
+    Assert-Equal 1 $r.Provenance.Count "expected one stdout provenance line, got: $($r.Provenance -join ' | ')"
+    Assert-True ($r.Provenance[0] -like '# source: fixture:tigerlake-laptop.json*NOT this machine*') $r.Provenance[0]
+    $r = Invoke-Cli @('-s', $fxSlot, '-Json')
+    Assert-Equal 0 $r.Provenance.Count 'machine formats carry source in the data, not a comment line'
+    # -Live runs the real machine: no banner, windows-pnp.
+    $r = Invoke-Cli @('-Json') -Live
+    Assert-Equal 0 $r.Banner.Count 'no banner without the env var'
+    Assert-Equal 'windows-pnp' (($r.Text | ConvertFrom-Json).source)
+}
+
+It 'an unfiltered LIVE listing exits zero' {
+    $r = Invoke-Cli -Live
     Assert-Equal 0 $r.Code
     Assert-True ($r.Output.Count -ge $devices.Count) 'fewer lines than devices'
 }
@@ -1293,15 +1504,15 @@ It 'says "not implemented" for -b / -p / -M / -A rather than a binder error' {
 }
 
 It 'CLI: -m, -mm and -i are implemented; -mm with -Json is refused' {
-    $r = Invoke-Cli @('-m', '-s', $sampleSlot)
+    $r = Invoke-Cli @('-m', '-s', $fxSlot)
     Assert-Equal 0 $r.Code $r.Text
     Assert-True ($r.Output[0] -match '^\S+ ".*" ".*" ".*"') "-m shape: $($r.Output[0])"
-    $r = Invoke-Cli @('-mm', '-s', $sampleSlot)
+    $r = Invoke-Cli @('-mm', '-s', $fxSlot)
     Assert-Equal 0 $r.Code $r.Text
-    Assert-True ($r.Output[0] -like "Slot:*$sampleSlot") "-mm shape: $($r.Output[0])"
+    Assert-True ($r.Output[0] -like "Slot:*$fxSlot") "-mm shape: $($r.Output[0])"
     $r = Invoke-Cli @('-mm', '-Json')
     Assert-Equal 64 $r.Code 'conflicting formats'
-    $r = Invoke-Cli @('-i', (Join-Path $root 'data\pci.ids'), '-s', $sampleSlot)
+    $r = Invoke-Cli @('-i', (Join-Path $root 'data\pci.ids'), '-s', $fxSlot)
     Assert-Equal 0 $r.Code $r.Text
     $r = Invoke-Cli @('-i', 'C:\nope.ids')
     Assert-Equal 64 $r.Code 'missing ids file is a usage error'
@@ -1318,7 +1529,7 @@ It 'CLI: -Baseline then -Diff is exit 0 when nothing changed and 3 when it did' 
         Assert-Equal 0 $r.Code "identical diff: $($r.Text)"
         Assert-True ($r.Text -like '*no differences*') $r.Text
         # A selector applies to both sides: the sample device against itself.
-        $r = Invoke-Cli @('-Diff', $tmp, '-s', $sampleSlot)
+        $r = Invoke-Cli @('-Diff', $tmp, '-s', $fxSlot)
         Assert-Equal 0 $r.Code "filtered diff of one device against itself: $($r.Text)"
         # A selector matching nothing is still "no matching PCI device", exit 1.
         $r = Invoke-Cli @('-Diff', $tmp, '-d', 'ffff:')
@@ -1337,6 +1548,28 @@ It 'CLI: -Baseline then -Diff is exit 0 when nothing changed and 3 when it did' 
         Assert-Equal 64 $r.Code
     } finally { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
 }
+
+It 'CLI: -ComputerName with an unreachable host exits 70, not an empty listing' {
+    $r = Invoke-Cli @('-ComputerName', 'no-such-host-winlspci-test') -Live
+    Assert-Equal 70 $r.Code "exit $($r.Code): $($r.Text)"
+    Assert-True ($r.Text -like '*none of the requested computers could be reached*') $r.Text
+}
+
+It 'CLI: blank or trailing-comma -ComputerName values are usage errors, never the local listing' {
+    foreach ($v in @('', '   ', ',', 'a,')) {
+        $r = Invoke-Cli @('-ComputerName', $v) -Live
+        Assert-Equal 64 $r.Code "'$v' gave exit $($r.Code): $($r.Text)"
+        # An empty argument is "requires a value"; blanks inside are "empty name". Both are usage errors.
+        Assert-True ($r.Text -like '*empty name*' -or $r.Text -like '*requires a value*') "'$v': $($r.Text)"
+        Assert-True ($r.Output.Count -lt 3) "'$v' must not print a listing"
+    }
+}
+
+# No automated test drives the CLI's -Credential prompt: Get-Credential can
+# raise a GUI dialog, and on a machine with saved credentials it can return
+# one without any interaction (observed under -NonInteractive). The CLI guard
+# (no credential obtained -> exit 64, never connect without it) is covered by
+# reading; scripts are told to use the module's -Credential with a PSCredential.
 
 It 'CLI: -Watch validates its interval and stops after -Iterations' {
     $r = Invoke-Cli @('-Watch', 'x')
@@ -1362,28 +1595,28 @@ It '-tv combines tree and verbose, as in lspci' {
 }
 
 It '-nnk prints ids and the driver line' {
-    $r = Invoke-Cli @('-nnk', '-s', $sampleSlot)
+    $r = Invoke-Cli @('-nnk', '-s', $fxSlot)
     Assert-Equal 0 $r.Code $r.Text
-    $needle = "[$($sample.VendorId):$($sample.DeviceId)]"
+    $needle = "[$($fxDev.VendorId):$($fxDev.DeviceId)]"
     Assert-True ($r.Text.Contains($needle)) "ids missing: $($r.Text)"
     Assert-True ($r.Text -like '*Driver:*') "driver line missing: $($r.Text)"
 }
 
 It '-k alone is not silently ignored: it shows the driver' {
-    $r = Invoke-Cli @('-k', '-s', $sampleSlot)
+    $r = Invoke-Cli @('-k', '-s', $fxSlot)
     Assert-True ($r.Text -like '*Driver:*') "-k should show the driver: $($r.Text)"
 }
 
 It '-D prefixes the domain, distinct from -d' {
-    $r = Invoke-Cli @('-D', '-s', $sampleSlot)
+    $r = Invoke-Cli @('-D', '-s', $fxSlot)
     Assert-Equal 0 $r.Code $r.Text
-    $expected = "$($sampleParts.DomainHex):$sampleBdf"   # a non-zero domain is already in the slot
+    $expected = "$($fxParts.DomainHex):$fxBdf"   # a non-zero domain is already in the slot
     Assert-True ($r.Output[0].StartsWith($expected)) "expected '$expected' prefix: $($r.Output[0])"
     Assert-True (-not $r.Output[0].StartsWith('0000:0000:')) 'domain must not be prefixed twice'
 }
 
 It 'long options are case-insensitive and may be abbreviated' {
-    $r = Invoke-Cli @('-json', '-s', $sampleSlot)
+    $r = Invoke-Cli @('-json', '-s', $fxSlot)
     Assert-Equal 0 $r.Code $r.Text
     $obj = $r.Text | ConvertFrom-Json
     Assert-Equal 1 $obj.count
@@ -1394,12 +1627,12 @@ It 'long options are case-insensitive and may be abbreviated' {
 It 'lowercase long options starting with s or d are not mistaken for -s / -d' {
     # `-device` once parsed as `-d evice`. A multi-character token that names a
     # long option is a long option; a single character is a short flag.
-    $r = Invoke-Cli @('-device', "$($sample.VendorId):", '-n')
+    $r = Invoke-Cli @('-device', "$($fxDev.VendorId):", '-n')
     Assert-Equal 0 $r.Code $r.Text
     Assert-True ($r.Output.Count -ge 1) 'no output for -device'
-    $r = Invoke-Cli @('-slot', $sampleSlot, '-delimited')
+    $r = Invoke-Cli @('-slot', $fxSlot, '-delimited')
     Assert-Equal 0 $r.Code $r.Text
-    Assert-True ($r.Output[0].StartsWith("$sampleSlot|")) "expected a delimited row: $($r.Output[0])"
+    Assert-True ($r.Output[0].StartsWith("$fxSlot|")) "expected a delimited row: $($r.Output[0])"
     $r = Invoke-Cli @('-de')   # ambiguous: Delimited / Delimiter / Device
     Assert-Equal 64 $r.Code
     Assert-True ($r.Text -like '*ambiguous*') $r.Text
@@ -1418,9 +1651,9 @@ It 'an attached -s value survives PowerShell eating the colon (-s01: and -s01:00
     $busOnly = @(Get-PciDevice -Slot "${sampleBus}:").Count
     $r = Invoke-Cli @("-s${sampleBus}:", '-n')
     Assert-Equal 0 $r.Code $r.Text
-    Assert-Equal $busOnly $r.Output.Count "-s${sampleBus}: should select bus $sampleBus"
-    $r2 = Invoke-Cli @("-s$sampleSlot", '-n')
-    Assert-Equal 1 $r2.Output.Count "-s$sampleSlot"
+    Assert-Equal $busOnly $r.Output.Count "-s${sampleBus}: should select bus $fxBus"
+    $r2 = Invoke-Cli @("-s$fxSlot", '-n')
+    Assert-Equal 1 $r2.Output.Count "-s$fxSlot"
     $r3 = Invoke-Cli @('-Match:zzzznope', '-Attribute', 'Slot')
     Assert-Equal 1 $r3.Code '-Match:value form'
 }
@@ -1433,8 +1666,8 @@ It 'a bad -s value is one clean usage error' {
 }
 
 It '-s <n> on the CLI selects a device number on any bus' {
-    $devNum = $sampleParts.Device
-    $expected = @($devices | Where-Object { (Split-Slot $_.Slot).Device -eq $devNum }).Count
+    $devNum = $fxParts.Device
+    $expected = @($fx | Where-Object { (Split-Slot $_.Slot).Device -eq $devNum }).Count
     $r = Invoke-Cli @('-s', $devNum, '-n')
     Assert-Equal $expected $r.Output.Count "-s $devNum"
 }
@@ -1455,7 +1688,7 @@ It 'every listed device is present (phantoms need -IncludeAbsent)' {
 }
 
 It 'an attribute query with ONE record is still a JSON array' {
-    $r = Invoke-Cli @('-Attribute', 'VendorId', '-s', $sampleSlot, '-Json')
+    $r = Invoke-Cli @('-Attribute', 'VendorId', '-s', $fxSlot, '-Json')
     Assert-Equal 0 $r.Code
     Assert-True ($r.Text.TrimStart().StartsWith('[')) "expected an array: $($r.Text)"
     Assert-Equal 1 @($r.Text | ConvertFrom-Json).Count
@@ -1474,7 +1707,7 @@ It 'an attribute query matching nothing exits non-zero' {
 
 It '-Downtrained is a filter: exit 1 when nothing is downtrained, 0 otherwise' {
     $expected = 0
-    if (@($devices | Where-Object { $_.Downtrained }).Count -eq 0) { $expected = 1 }
+    if (@($fx | Where-Object { $_.Downtrained }).Count -eq 0) { $expected = 1 }
     $r = Invoke-Cli @('-Downtrained')
     Assert-Equal $expected $r.Code $r.Text
 }
@@ -1483,9 +1716,9 @@ It '-ListAttributes is fast: it does not enumerate the machine' {
     # Relative, not absolute: a loaded box makes both slow, but a -Version run
     # (process start + module import, no enumeration) and a -ListAttributes run
     # should cost about the same, and both far less than a listing.
-    $floor = (Measure-Command { Invoke-Cli @('-Version') | Out-Null }).TotalMilliseconds
-    $ms = (Measure-Command { Invoke-Cli @('-ListAttributes') | Out-Null }).TotalMilliseconds
-    $full = (Measure-Command { Invoke-Cli @('-n') | Out-Null }).TotalMilliseconds
+    $floor = (Measure-Command { Invoke-Cli @('-Version') -Live | Out-Null }).TotalMilliseconds
+    $ms = (Measure-Command { Invoke-Cli @('-ListAttributes') -Live | Out-Null }).TotalMilliseconds
+    $full = (Measure-Command { Invoke-Cli @('-n') -Live | Out-Null }).TotalMilliseconds
     Assert-True ($ms -lt ($floor + ($full - $floor) / 2)) "-ListAttributes ${ms}ms vs -Version ${floor}ms and a listing ${full}ms"
 }
 

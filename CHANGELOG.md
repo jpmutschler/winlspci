@@ -61,6 +61,57 @@ object shape may still change between minors (and says so here when it does).
   keeps the override separate from the file `Update-PciIds` writes.
 - **`-Watch <seconds>`** (`-Iterations <n>`): re-enumerate and print only
   timestamped changes; exit 3 if anything changed.
+- **lspci-shaped `-t`**: one root per `[domain:bus]`, bridges carry their
+  secondary/subordinate bus range derived from their descendants
+  (`00:1c.0-[01]`, `01:00.0-[02-04]`), children hang under the bridge
+  token; every device still on a line of its own with its full slot.
+  Unreachable nodes (cycles) still render as roots of their own.
+- **Downstream link on bridges** (`DownstreamSlot`, `DownstreamLinkSpeed`,
+  `DownstreamLinkWidth`): a bridge with exactly one child that reports link
+  state shows it — `LnkSta: not reported by this device (downstream 01:00.0
+  reports 8GT/s x4)` — marked as the child's, never merged into the bridge's
+  own fields.
+- **Parallel property fetch** (RunspacePool, 8 workers; PowerShell 5.1 has
+  no `ForEach-Object -Parallel`): the per-device `GetDeviceProperties` call
+  is ~14 ms of fixed latency plus ~0.9 ms per key, and overlapping removes
+  the fixed part — measured 1.05 s → 0.47 s for 24 devices at 34 keys.
+  `Get-PciDevice -Serial` or `WINLSPCI_SERIAL=1` restores the serial path;
+  output is identical either way, and the "every bag empty" tripwire still
+  fires. Fixture replay never enters the pool.
+- **`WINLSPCI_FIXTURE=<file>`** replays a recording in place of the machine
+  (for the test suite's CLI runs; an explicit `Set-PciFixture` wins). The CLI
+  prints a banner on stderr once per process, and `source` in `-Json` /
+  baselines becomes `fixture:<name>` (`Get-PciDataSource`), so a recording can
+  never pass as live data.
+- `tests\fixtures\switch-hierarchy.json`: a synthetic root port → Switchtec
+  upstream port → three downstream ports → two NVMe endpoints (one
+  downtrained), for the tree, the bus ranges and the downstream view.
+- **Remote enumeration**: `Get-PciDevice -ComputerName a,b,c [-Credential]`
+  (one WinRM session per name; unreachable nodes warned and skipped, none
+  reachable → failure, never an empty list) and `-CimSession` for sessions
+  you manage (DCOM works). Every object carries `ComputerName`. CLI
+  `-ComputerName` prefixes lines with `host:` (`Format-Lspci
+  -ShowComputer`), prints one `-t` tree per host, leads `-Delimited` with
+  `ComputerName`, and `-Credential <user>` prompts. Remote property fetch is
+  serial.
+- `-d` / `-s` are display filters: the whole machine is enumerated and the
+  selector applied last, so a bridge's downstream link is the same whether or
+  not its child was selected (a narrow `-d` costs ~0.6 s more; `-s` can never
+  be optimised differently because the slot comes from inside the property
+  bag). `Get-PciEntity` no longer pushes a vendor into WQL.
+- Remote source list is validated: a blank name is refused (never a silent
+  fall-back to the local machine), duplicate names/sessions enumerate once,
+  and a node whose property fetch fails for every device is warned about and
+  dropped instead of hiding behind other nodes' successes.
+- `packaging\Build-Module.ps1` emits a release copy with one concatenated
+  `winlspci.psm1` (dot-sourcing 12 files costs ~160 ms per invocation);
+  `dist\` is git-ignored and a test builds and imports it.
+- **`Install-LspciShim`** writes `lspci.cmd` into
+  `%LOCALAPPDATA%\Microsoft\WindowsApps` (or `-Directory`) pointing at this
+  module's CLI, for `Install-Module` users; `-Remove` deletes it (only a shim
+  it wrote; a foreign `lspci.cmd` is neither overwritten nor removed).
+  `packaging/` holds the release notes, a scoop manifest, winget/signing
+  steps.
 - `-Json` envelope carries `schemaVersion` (1), `winlspciVersion`,
   `generatedAt` (UTC) and `computerName`. Additive changes keep the schema
   version; a rename or change of meaning bumps it.

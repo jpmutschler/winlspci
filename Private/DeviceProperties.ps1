@@ -153,7 +153,27 @@ function Format-DeviceSerialNumber {
 # one that happened to have them. Test-only: set through the module scope,
 # never from the CLI.
 $script:Fixture = $null
+$script:FixtureName = $null
+$script:FixtureFromEnv = $null    # the WINLSPCI_FIXTURE value a fixture was loaded from, if it was
 $script:LastBagError = $null
+
+function Get-PciDataSource {
+    <#
+    .SYNOPSIS
+      Where the device data comes from: "windows-pnp", or "fixture:<name>"
+      when a recording is standing in for the machine. Written into -Json and
+      baseline envelopes so a file never silently claims to be live data.
+    #>
+    [CmdletBinding()]
+    param()
+    if ($null -ne $script:Fixture -or $env:WINLSPCI_FIXTURE) {
+        $name = $script:FixtureName
+        if (-not $name -and $env:WINLSPCI_FIXTURE) { $name = Split-Path -Leaf $env:WINLSPCI_FIXTURE }
+        if (-not $name) { $name = 'in-memory' }
+        return "fixture:$name"
+    }
+    return 'windows-pnp'
+}
 
 function Set-PciFixture {
     <#
@@ -161,7 +181,9 @@ function Set-PciFixture {
       Load a recorded fixture (JSON) as the device source, or -Clear it.
     #>
     param([string]$Path, [switch]$Clear)
-    if ($Clear) { $script:Fixture = $null; return }
+    if ($Clear) { $script:Fixture = $null; $script:FixtureName = $null; $script:FixtureFromEnv = $null; return }
+    $script:FixtureFromEnv = $null     # an explicit load is not the env var's
+    $script:FixtureName = Split-Path -Leaf $Path
     $resolved = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
     if (-not (Test-Path -LiteralPath $resolved -PathType Leaf)) { throw "Set-PciFixture: no such file '$Path'" }
     $raw = Get-Content -LiteralPath $resolved -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -205,23 +227,47 @@ function Get-PciEntity {
       the query returns ZERO rows silently, rendering a machine with no PCI
       bus; a test pins the row count against a client-side -like.
 
-      $VendorId is only ever four validated hex digits (ConvertTo-DeviceFilter),
-      so interpolating it into the query is safe.
+      No selector is pushed into the query: -d/-s are display filters applied
+      on complete objects (a bridge's downstream link needs its child even
+      when only the bridge is selected), so nothing user-supplied ever
+      reaches this string.
     #>
-    param([string]$VendorId = '')
+    param($CimSession = $null)
+
+    $query = 'SELECT DeviceID,PNPDeviceID,Name,Service,Status,ConfigManagerErrorCode,HardwareID ' +
+             'FROM Win32_PnPEntity WHERE PNPDeviceID LIKE "PCI\\VEN[_]%"'
+
+    # A remote session is always live: fixtures stand in for THIS machine only.
+    if ($null -ne $CimSession) {
+        try {
+            return @(Get-CimInstance -CimSession $CimSession -Query $query -ErrorAction Stop)
+        } catch {
+            throw "PCI enumeration failed on $($CimSession.ComputerName): the WMI query for Win32_PnPEntity did not complete ($($_.Exception.Message))."
+        }
+    }
+
+    # WINLSPCI_FIXTURE: replay a recording in place of the machine, for the
+    # test suite's CLI runs (a live enumeration per child process was ~83% of
+    # the suite). An explicit Set-PciFixture wins; the env var is the
+    # fallback; live CIM is the default. Provenance is stamped into the data
+    # (Get-PciDataSource -> "fixture:<name>") and the CLI prints a banner on
+    # stderr, because an environment variable that silently changes what a
+    # diagnostic tool reports is exactly what burns someone at 2am.
+    # Re-checked on every call, so the env var is not sticky: clearing it in
+    # a module session returns to live data, and changing it reloads. An
+    # explicit Set-PciFixture (not from the env) is never touched here.
+    if ($script:FixtureFromEnv -and ($env:WINLSPCI_FIXTURE -ne $script:FixtureFromEnv)) {
+        $script:Fixture = $null; $script:FixtureName = $null; $script:FixtureFromEnv = $null
+    }
+    if ($null -eq $script:Fixture -and $env:WINLSPCI_FIXTURE) {
+        Set-PciFixture -Path $env:WINLSPCI_FIXTURE
+        $script:FixtureFromEnv = $env:WINLSPCI_FIXTURE
+    }
 
     if ($null -ne $script:Fixture) {
-        $set = @($script:Fixture | Where-Object { $_.PNPDeviceID -like 'PCI\VEN_*' })
-        if ($VendorId) { $set = @($set | Where-Object { $_.PNPDeviceID -like "PCI\VEN_${VendorId}*" }) }
-        return $set
+        return @($script:Fixture | Where-Object { $_.PNPDeviceID -like 'PCI\VEN_*' })
     }
 
-    $where = 'PNPDeviceID LIKE "PCI\\VEN[_]%"'
-    if ($VendorId) {
-        $where = 'PNPDeviceID LIKE "PCI\\VEN[_]{0}%"' -f $VendorId
-    }
-    $query = 'SELECT DeviceID,PNPDeviceID,Name,Service,Status,ConfigManagerErrorCode,HardwareID ' +
-             "FROM Win32_PnPEntity WHERE $where"
     # A failed query must not look like an empty machine. Under load the WMI
     # provider can refuse for a moment; with -ErrorAction SilentlyContinue
     # that rendered as "no PCI devices enumerated", exit 0. Throw instead;
@@ -299,6 +345,108 @@ function Get-DevicePropertyBag {
         $bag[$pp['KeyName'].Value] = $value
     }
     return $bag
+}
+
+
+function Get-DevicePropertyBagSet {
+    <#
+    .SYNOPSIS
+      Property bags for many devices at once, fetched in parallel.
+
+    .DESCRIPTION
+      The per-device GetDeviceProperties call costs ~14ms of fixed round-trip
+      latency plus ~0.9ms per key, and the module now asks for 34 keys. Serial,
+      that is ~1.1s for 24 devices and ~12s for 300. The fixed part is pure
+      latency, which overlapping removes: measured 1110ms -> 376ms at 24
+      devices with 8 runspaces -- faster than the OLD 17-key serial fetch was.
+
+      PowerShell 5.1 has no ForEach-Object -Parallel; a RunspacePool does the
+      same job. Each worker runs the same GetDeviceProperties call on its own
+      entity; a worker that faults returns an empty bag and the error text,
+      never an exception up to the caller (an empty bag is already a supported
+      outcome; Get-PciDevice's "every bag empty" tripwire still fires).
+
+      Below four devices the pool setup costs more than it saves, so those
+      stay serial, as does everything when $env:WINLSPCI_SERIAL is set (a
+      diagnostic switch: if parallel ever misbehaves on some box, set it and
+      the tool is exactly what it was before).
+
+      Returns a hashtable: PNPDeviceID -> bag. Fixture entities never reach
+      here (their bags are attached), so this is the live path only.
+    #>
+    param($CimInstances, [int]$Threads = 8)
+
+    $instances = @($CimInstances)
+    $bags = @{}
+    if ($instances.Count -eq 0) { return $bags }
+
+    $serial = ($instances.Count -lt 4) -or ($env:WINLSPCI_SERIAL -and $env:WINLSPCI_SERIAL -ne '0')
+    if ($serial) {
+        foreach ($i in $instances) { $bags["$($i.PNPDeviceID)"] = Get-DevicePropertyBag $i }
+        return $bags
+    }
+
+    # [string[]], not a PSObject-wrapped array: Invoke-CimMethod inside a
+    # runspace throws "Unable to cast PSObject to String" on the wrapped form,
+    # and the whole fetch silently degrades to empty bags. (Measured; it is
+    # the fast-wrong-answer trap this module keeps tripping over.)
+    [string[]]$keys = @($script:WantedKeys | ForEach-Object { "$_" })
+
+    $worker = {
+        param($Instance, [string[]]$Keys)
+        $bag = @{}
+        try {
+            $result = Invoke-CimMethod -InputObject $Instance -MethodName GetDeviceProperties `
+                -Arguments @{ devicePropertyKeys = $Keys } -ErrorAction Stop
+            $props = $result.PSObject.Properties['deviceProperties']
+            if ($props) {
+                foreach ($p in $props.Value) {
+                    $pp = $p.PSObject.Properties
+                    if (-not $pp['KeyName'] -or -not $pp['Data']) { continue }
+                    $v = $pp['Data'].Value
+                    if ($null -eq $v -or "$v" -eq '') { continue }
+                    $bag[$pp['KeyName'].Value] = $v
+                }
+            }
+            return @{ Bag = $bag; Error = $null }
+        } catch {
+            return @{ Bag = @{}; Error = $_.Exception.Message }
+        }
+    }
+
+    # Everything about the pool is inside one try: a pool that fails to open,
+    # or a BeginInvoke that throws mid-submission, falls back to the serial
+    # path (same data, slower) instead of surfacing an infrastructure error
+    # as if the user had typed something wrong. Shells are disposed in the
+    # finally whatever happened.
+    $pool = $null
+    $jobs = @()
+    try {
+        $pool = [runspacefactory]::CreateRunspacePool(1, $Threads)
+        $pool.Open()
+        foreach ($inst in $instances) {
+            $ps = [powershell]::Create()
+            $ps.RunspacePool = $pool
+            $null = $ps.AddScript($worker).AddArgument($inst).AddArgument($keys)
+            $jobs += [pscustomobject]@{ Shell = $ps; Handle = $ps.BeginInvoke(); Id = "$($inst.PNPDeviceID)" }
+        }
+        foreach ($j in $jobs) {
+            $out = $null
+            try { $out = @($j.Shell.EndInvoke($j.Handle))[0] } catch { $out = @{ Bag = @{}; Error = $_.Exception.Message } }
+            if ($null -eq $out) { $out = @{ Bag = @{}; Error = 'worker returned nothing' } }
+            $bags[$j.Id] = $out.Bag
+            if ($out.Error) { $script:LastBagError = $out.Error }
+        }
+    } catch {
+        Write-Warning "winlspci: parallel property fetch unavailable ($($_.Exception.Message)); fetching serially"
+        $bags = @{}
+        foreach ($i in $instances) { $bags["$($i.PNPDeviceID)"] = Get-DevicePropertyBag $i }
+    } finally {
+        # Disposal must not throw over a result we already have.
+        foreach ($j in $jobs) { try { $j.Shell.Dispose() } catch { Write-Verbose "shell dispose: $($_.Exception.Message)" } }
+        if ($null -ne $pool) { try { $pool.Close(); $pool.Dispose() } catch { Write-Verbose "pool dispose: $($_.Exception.Message)" } }
+    }
+    return $bags
 }
 
 

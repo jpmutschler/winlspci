@@ -33,7 +33,7 @@ function Export-PciBaseline {
         winlspciVersion = "$((Get-Module winlspci).Version)"
         generatedAt     = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
         computerName    = $env:COMPUTERNAME
-        source          = 'windows-pnp'
+        source          = Get-PciDataSource
         count           = @($Device).Count
         devices         = @($Device)
     }
@@ -120,6 +120,15 @@ function Compare-PciBaseline {
         $sv = 0
         if (-not [int]::TryParse("$($raw.schemaVersion)", [ref]$sv)) { throw "Compare-PciBaseline: schemaVersion '$($raw.schemaVersion)' in '$Path' is not a number" }
         if ($sv -gt 1) { Write-Warning "baseline schemaVersion $sv is newer than this tool understands (1); comparing anyway" }
+    }
+    # A baseline recorded from a fixture diffed against live hardware (or the
+    # reverse) produces a change list that reads exactly like "the hardware
+    # changed". The envelope carries `source`; say so when the two differ.
+    if ($raw -isnot [array] -and $raw.PSObject.Properties['source'] -and $raw.source) {
+        $nowSource = Get-PciDataSource
+        if ("$($raw.source)" -ne $nowSource) {
+            Write-Warning "baseline source is '$($raw.source)' but this enumeration is '$nowSource' -- differences below may reflect that, not a hardware change"
+        }
     }
 
     # Apply the same selectors to the baseline that the caller applied to

@@ -12,7 +12,8 @@
         'ConvertTo-PciAttributeRecord', 'Get-PciAttributeName',
         'Format-PciDelimited', 'Format-PciMachine', 'Update-PciIds',
         'Get-PciVendorName', 'Get-PciDeviceName', 'Get-PciSubsystemName', 'Get-PciClassName',
-        'Import-PciIds', 'Read-PciIdsFile', 'Export-PciBaseline', 'Compare-PciBaseline', 'Compare-PciDeviceSet'
+        'Import-PciIds', 'Read-PciIdsFile', 'Export-PciBaseline', 'Compare-PciBaseline', 'Compare-PciDeviceSet',
+        'Get-PciDataSource', 'Install-LspciShim'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()

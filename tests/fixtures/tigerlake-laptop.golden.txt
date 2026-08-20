@@ -7,7 +7,7 @@
         Type: PCIe Root Complex Integrated Endpoint (PCIe capability v2)
         Driver: igfxn (32.0.101.7088)
 00:06.0 0604: 8086:9a09 (rev 01) (prog-if 00 [Normal decode])
-        LnkSta: not reported by this device
+        LnkSta: not reported by this device (downstream 01:00.0 reports 8GT/s x4)
         Type: PCIe Root Port (PCIe capability v2)
         Driver: pci (10.0.26100.8972)
 00:07.0 0604: 8086:9a23 (rev 01) (prog-if 00 [Normal decode])
@@ -59,11 +59,11 @@
         Type: PCI
         Driver: MEIx64 (2540.8.7.0)
 00:1c.0 0604: 8086:a0bd (rev 20) (prog-if 00 [Normal decode])
-        LnkSta: not reported by this device
+        LnkSta: not reported by this device (downstream f2:00.0 reports 5GT/s x1)
         Type: PCIe Root Port (PCIe capability v2)
         Driver: pci (10.1.24.5)
 00:1d.0 0604: 8086:a0b0 (rev 20) (prog-if 00 [Normal decode])
-        LnkSta: not reported by this device
+        LnkSta: not reported by this device (downstream f3:00.0 reports 8GT/s x4)
         Type: PCIe Root Port (PCIe capability v2)
         Driver: pci (10.1.24.5)
 00:1e.0 0780: 8086:a0a8 (rev 20)
@@ -97,30 +97,30 @@ f3:00.0 0302: 10de:25a0 (rev a1)
         Type: PCIe Endpoint (PCIe capability v2)
         Driver: nvlddmkm (32.0.16.1088)
 # lspci -t -n
--00:00.0 [8086:9a14]
--00:02.0 [8086:9a49]
--00:06.0 [8086:9a09]  [root port]
- \-01:00.0 [1c5c:174a]  (8GT/s x4)
--00:07.0 [8086:9a23]  [root port]
--00:07.1 [8086:9a25]  [root port]
--00:0a.0 [8086:9a0d]
--00:0d.0 [8086:9a13]
--00:0d.2 [8086:9a1b]
--00:10.0 [8086:a0d8]
--00:10.6 [8086:a0d0]
--00:14.0 [8086:a0ed]
--00:14.2 [8086:a0ef]
--00:15.0 [8086:a0e8]
--00:15.1 [8086:a0e9]
--00:16.0 [8086:a0e0]
--00:1c.0 [8086:a0bd]  [root port]
- \-f2:00.0 [8086:2723]  (5GT/s x1)
--00:1d.0 [8086:a0b0]  [root port]
- \-f3:00.0 [10de:25a0]  (8GT/s x4)
--00:1e.0 [8086:a0a8]
--00:1f.0 [8086:a082]
--00:1f.3 [8086:a0c8]
--00:1f.5 [8086:a0a4]
+-[0000:00]-+-00:00.0 [8086:9a14]
+           +-00:02.0 [8086:9a49]
+           +-00:06.0-[01] [8086:9a09]  [root port]
+           |           \-01:00.0 [1c5c:174a]  (8GT/s x4)
+           +-00:07.0 [8086:9a23]  [root port]
+           +-00:07.1 [8086:9a25]  [root port]
+           +-00:0a.0 [8086:9a0d]
+           +-00:0d.0 [8086:9a13]
+           +-00:0d.2 [8086:9a1b]
+           +-00:10.0 [8086:a0d8]
+           +-00:10.6 [8086:a0d0]
+           +-00:14.0 [8086:a0ed]
+           +-00:14.2 [8086:a0ef]
+           +-00:15.0 [8086:a0e8]
+           +-00:15.1 [8086:a0e9]
+           +-00:16.0 [8086:a0e0]
+           +-00:1c.0-[f2] [8086:a0bd]  [root port]
+           |           \-f2:00.0 [8086:2723]  (5GT/s x1)
+           +-00:1d.0-[f3] [8086:a0b0]  [root port]
+           |           \-f3:00.0 [10de:25a0]  (8GT/s x4)
+           +-00:1e.0 [8086:a0a8]
+           +-00:1f.0 [8086:a082]
+           +-00:1f.3 [8086:a0c8]
+           \-00:1f.5 [8086:a0a4]
 # attributes (names excluded)
 00:00.0 Slot=00:00.0 present=True
 00:00.0 Domain=0 present=True
@@ -144,6 +144,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:00.0 MaxLinkSpeedRaw= present=False
 00:00.0 MaxLinkWidth= present=False
 00:00.0 Downtrained=False present=True
+00:00.0 DownstreamSlot= present=False
+00:00.0 DownstreamLinkSpeed= present=False
+00:00.0 DownstreamLinkWidth= present=False
 00:00.0 MaxPayloadSize= present=False
 00:00.0 MaxPayloadSizeSupported= present=False
 00:00.0 MaxReadRequestSize= present=False
@@ -198,6 +201,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:02.0 MaxLinkSpeedRaw= present=False
 00:02.0 MaxLinkWidth= present=False
 00:02.0 Downtrained=False present=True
+00:02.0 DownstreamSlot= present=False
+00:02.0 DownstreamLinkSpeed= present=False
+00:02.0 DownstreamLinkWidth= present=False
 00:02.0 MaxPayloadSize=128 present=True
 00:02.0 MaxPayloadSizeSupported=128 present=True
 00:02.0 MaxReadRequestSize=128 present=True
@@ -252,6 +258,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:06.0 MaxLinkSpeedRaw= present=False
 00:06.0 MaxLinkWidth= present=False
 00:06.0 Downtrained=False present=True
+00:06.0 DownstreamSlot=01:00.0 present=True
+00:06.0 DownstreamLinkSpeed=8GT/s present=True
+00:06.0 DownstreamLinkWidth=4 present=True
 00:06.0 MaxPayloadSize= present=False
 00:06.0 MaxPayloadSizeSupported= present=False
 00:06.0 MaxReadRequestSize= present=False
@@ -306,6 +315,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:07.0 MaxLinkSpeedRaw= present=False
 00:07.0 MaxLinkWidth= present=False
 00:07.0 Downtrained=False present=True
+00:07.0 DownstreamSlot= present=False
+00:07.0 DownstreamLinkSpeed= present=False
+00:07.0 DownstreamLinkWidth= present=False
 00:07.0 MaxPayloadSize= present=False
 00:07.0 MaxPayloadSizeSupported= present=False
 00:07.0 MaxReadRequestSize= present=False
@@ -360,6 +372,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:07.1 MaxLinkSpeedRaw= present=False
 00:07.1 MaxLinkWidth= present=False
 00:07.1 Downtrained=False present=True
+00:07.1 DownstreamSlot= present=False
+00:07.1 DownstreamLinkSpeed= present=False
+00:07.1 DownstreamLinkWidth= present=False
 00:07.1 MaxPayloadSize= present=False
 00:07.1 MaxPayloadSizeSupported= present=False
 00:07.1 MaxReadRequestSize= present=False
@@ -414,6 +429,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:0a.0 MaxLinkSpeedRaw= present=False
 00:0a.0 MaxLinkWidth= present=False
 00:0a.0 Downtrained=False present=True
+00:0a.0 DownstreamSlot= present=False
+00:0a.0 DownstreamLinkSpeed= present=False
+00:0a.0 DownstreamLinkWidth= present=False
 00:0a.0 MaxPayloadSize=128 present=True
 00:0a.0 MaxPayloadSizeSupported=128 present=True
 00:0a.0 MaxReadRequestSize=128 present=True
@@ -468,6 +486,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:0d.0 MaxLinkSpeedRaw= present=False
 00:0d.0 MaxLinkWidth= present=False
 00:0d.0 Downtrained=False present=True
+00:0d.0 DownstreamSlot= present=False
+00:0d.0 DownstreamLinkSpeed= present=False
+00:0d.0 DownstreamLinkWidth= present=False
 00:0d.0 MaxPayloadSize= present=False
 00:0d.0 MaxPayloadSizeSupported= present=False
 00:0d.0 MaxReadRequestSize= present=False
@@ -522,6 +543,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:0d.2 MaxLinkSpeedRaw= present=False
 00:0d.2 MaxLinkWidth= present=False
 00:0d.2 Downtrained=False present=True
+00:0d.2 DownstreamSlot= present=False
+00:0d.2 DownstreamLinkSpeed= present=False
+00:0d.2 DownstreamLinkWidth= present=False
 00:0d.2 MaxPayloadSize= present=False
 00:0d.2 MaxPayloadSizeSupported= present=False
 00:0d.2 MaxReadRequestSize= present=False
@@ -576,6 +600,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:10.0 MaxLinkSpeedRaw= present=False
 00:10.0 MaxLinkWidth= present=False
 00:10.0 Downtrained=False present=True
+00:10.0 DownstreamSlot= present=False
+00:10.0 DownstreamLinkSpeed= present=False
+00:10.0 DownstreamLinkWidth= present=False
 00:10.0 MaxPayloadSize= present=False
 00:10.0 MaxPayloadSizeSupported= present=False
 00:10.0 MaxReadRequestSize= present=False
@@ -630,6 +657,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:10.6 MaxLinkSpeedRaw= present=False
 00:10.6 MaxLinkWidth= present=False
 00:10.6 Downtrained=False present=True
+00:10.6 DownstreamSlot= present=False
+00:10.6 DownstreamLinkSpeed= present=False
+00:10.6 DownstreamLinkWidth= present=False
 00:10.6 MaxPayloadSize= present=False
 00:10.6 MaxPayloadSizeSupported= present=False
 00:10.6 MaxReadRequestSize= present=False
@@ -684,6 +714,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:14.0 MaxLinkSpeedRaw= present=False
 00:14.0 MaxLinkWidth= present=False
 00:14.0 Downtrained=False present=True
+00:14.0 DownstreamSlot= present=False
+00:14.0 DownstreamLinkSpeed= present=False
+00:14.0 DownstreamLinkWidth= present=False
 00:14.0 MaxPayloadSize= present=False
 00:14.0 MaxPayloadSizeSupported= present=False
 00:14.0 MaxReadRequestSize= present=False
@@ -738,6 +771,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:14.2 MaxLinkSpeedRaw= present=False
 00:14.2 MaxLinkWidth= present=False
 00:14.2 Downtrained=False present=True
+00:14.2 DownstreamSlot= present=False
+00:14.2 DownstreamLinkSpeed= present=False
+00:14.2 DownstreamLinkWidth= present=False
 00:14.2 MaxPayloadSize= present=False
 00:14.2 MaxPayloadSizeSupported= present=False
 00:14.2 MaxReadRequestSize= present=False
@@ -792,6 +828,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:15.0 MaxLinkSpeedRaw= present=False
 00:15.0 MaxLinkWidth= present=False
 00:15.0 Downtrained=False present=True
+00:15.0 DownstreamSlot= present=False
+00:15.0 DownstreamLinkSpeed= present=False
+00:15.0 DownstreamLinkWidth= present=False
 00:15.0 MaxPayloadSize= present=False
 00:15.0 MaxPayloadSizeSupported= present=False
 00:15.0 MaxReadRequestSize= present=False
@@ -846,6 +885,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:15.1 MaxLinkSpeedRaw= present=False
 00:15.1 MaxLinkWidth= present=False
 00:15.1 Downtrained=False present=True
+00:15.1 DownstreamSlot= present=False
+00:15.1 DownstreamLinkSpeed= present=False
+00:15.1 DownstreamLinkWidth= present=False
 00:15.1 MaxPayloadSize= present=False
 00:15.1 MaxPayloadSizeSupported= present=False
 00:15.1 MaxReadRequestSize= present=False
@@ -900,6 +942,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:16.0 MaxLinkSpeedRaw= present=False
 00:16.0 MaxLinkWidth= present=False
 00:16.0 Downtrained=False present=True
+00:16.0 DownstreamSlot= present=False
+00:16.0 DownstreamLinkSpeed= present=False
+00:16.0 DownstreamLinkWidth= present=False
 00:16.0 MaxPayloadSize= present=False
 00:16.0 MaxPayloadSizeSupported= present=False
 00:16.0 MaxReadRequestSize= present=False
@@ -954,6 +999,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:1c.0 MaxLinkSpeedRaw= present=False
 00:1c.0 MaxLinkWidth= present=False
 00:1c.0 Downtrained=False present=True
+00:1c.0 DownstreamSlot=f2:00.0 present=True
+00:1c.0 DownstreamLinkSpeed=5GT/s present=True
+00:1c.0 DownstreamLinkWidth=1 present=True
 00:1c.0 MaxPayloadSize= present=False
 00:1c.0 MaxPayloadSizeSupported= present=False
 00:1c.0 MaxReadRequestSize= present=False
@@ -1008,6 +1056,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:1d.0 MaxLinkSpeedRaw= present=False
 00:1d.0 MaxLinkWidth= present=False
 00:1d.0 Downtrained=False present=True
+00:1d.0 DownstreamSlot=f3:00.0 present=True
+00:1d.0 DownstreamLinkSpeed=8GT/s present=True
+00:1d.0 DownstreamLinkWidth=4 present=True
 00:1d.0 MaxPayloadSize= present=False
 00:1d.0 MaxPayloadSizeSupported= present=False
 00:1d.0 MaxReadRequestSize= present=False
@@ -1062,6 +1113,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:1e.0 MaxLinkSpeedRaw= present=False
 00:1e.0 MaxLinkWidth= present=False
 00:1e.0 Downtrained=False present=True
+00:1e.0 DownstreamSlot= present=False
+00:1e.0 DownstreamLinkSpeed= present=False
+00:1e.0 DownstreamLinkWidth= present=False
 00:1e.0 MaxPayloadSize= present=False
 00:1e.0 MaxPayloadSizeSupported= present=False
 00:1e.0 MaxReadRequestSize= present=False
@@ -1116,6 +1170,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:1f.0 MaxLinkSpeedRaw= present=False
 00:1f.0 MaxLinkWidth= present=False
 00:1f.0 Downtrained=False present=True
+00:1f.0 DownstreamSlot= present=False
+00:1f.0 DownstreamLinkSpeed= present=False
+00:1f.0 DownstreamLinkWidth= present=False
 00:1f.0 MaxPayloadSize= present=False
 00:1f.0 MaxPayloadSizeSupported= present=False
 00:1f.0 MaxReadRequestSize= present=False
@@ -1170,6 +1227,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:1f.3 MaxLinkSpeedRaw= present=False
 00:1f.3 MaxLinkWidth= present=False
 00:1f.3 Downtrained=False present=True
+00:1f.3 DownstreamSlot= present=False
+00:1f.3 DownstreamLinkSpeed= present=False
+00:1f.3 DownstreamLinkWidth= present=False
 00:1f.3 MaxPayloadSize= present=False
 00:1f.3 MaxPayloadSizeSupported= present=False
 00:1f.3 MaxReadRequestSize= present=False
@@ -1224,6 +1284,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:1f.5 MaxLinkSpeedRaw= present=False
 00:1f.5 MaxLinkWidth= present=False
 00:1f.5 Downtrained=False present=True
+00:1f.5 DownstreamSlot= present=False
+00:1f.5 DownstreamLinkSpeed= present=False
+00:1f.5 DownstreamLinkWidth= present=False
 00:1f.5 MaxPayloadSize= present=False
 00:1f.5 MaxPayloadSizeSupported= present=False
 00:1f.5 MaxReadRequestSize= present=False
@@ -1278,6 +1341,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 01:00.0 MaxLinkSpeedRaw=3 present=True
 01:00.0 MaxLinkWidth=4 present=True
 01:00.0 Downtrained=False present=True
+01:00.0 DownstreamSlot= present=False
+01:00.0 DownstreamLinkSpeed= present=False
+01:00.0 DownstreamLinkWidth= present=False
 01:00.0 MaxPayloadSize=256 present=True
 01:00.0 MaxPayloadSizeSupported=512 present=True
 01:00.0 MaxReadRequestSize=512 present=True
@@ -1332,6 +1398,9 @@ f2:00.0 MaxLinkSpeed=5GT/s present=True
 f2:00.0 MaxLinkSpeedRaw=2 present=True
 f2:00.0 MaxLinkWidth=1 present=True
 f2:00.0 Downtrained=False present=True
+f2:00.0 DownstreamSlot= present=False
+f2:00.0 DownstreamLinkSpeed= present=False
+f2:00.0 DownstreamLinkWidth= present=False
 f2:00.0 MaxPayloadSize=128 present=True
 f2:00.0 MaxPayloadSizeSupported=128 present=True
 f2:00.0 MaxReadRequestSize=128 present=True
@@ -1386,6 +1455,9 @@ f3:00.0 MaxLinkSpeed=16GT/s present=True
 f3:00.0 MaxLinkSpeedRaw=4 present=True
 f3:00.0 MaxLinkWidth=16 present=True
 f3:00.0 Downtrained=True present=True
+f3:00.0 DownstreamSlot= present=False
+f3:00.0 DownstreamLinkSpeed= present=False
+f3:00.0 DownstreamLinkWidth= present=False
 f3:00.0 MaxPayloadSize=256 present=True
 f3:00.0 MaxPayloadSizeSupported=256 present=True
 f3:00.0 MaxReadRequestSize=512 present=True

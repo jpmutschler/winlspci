@@ -1,0 +1,124 @@
+[
+  {
+    "PNPDeviceID": "PCI\\VEN_8086&DEV_A0BD&SUBSYS_00000000&REV_20\\3&11583659&0&E0",
+    "Name": "Intel(R) PCI Express Root Port #6 - A0BD",
+    "Service": "pci",
+    "Status": "OK",
+    "ConfigManagerErrorCode": 0,
+    "HardwareID": ["PCI\\VEN_8086&DEV_A0BD&SUBSYS_00000000&REV_20", "PCI\\VEN_8086&DEV_A0BD&CC_060400", "PCI\\VEN_8086&DEV_A0BD&CC_0604"],
+    "Bag": {
+      "DEVPKEY_Device_LocationInfo": "PCI bus 0, device 28, function 0",
+      "DEVPKEY_Device_Parent": "ACPI\\PNP0A08\\0",
+      "DEVPKEY_PciDevice_BaseClass": 6, "DEVPKEY_PciDevice_SubClass": 4, "DEVPKEY_PciDevice_ProgIf": 0,
+      "DEVPKEY_PciDevice_DeviceType": 8,
+      "DEVPKEY_PciDevice_AcsSupport": 0, "DEVPKEY_PciDevice_AcsCapabilityRegister": 31,
+      "DEVPKEY_PciDevice_AERCapabilityPresent": true,
+      "DEVPKEY_Device_IsPresent": true
+    }
+  },
+  {
+    "PNPDeviceID": "PCI\\VEN_11F8&DEV_4052&SUBSYS_405211F8&REV_01\\4&1A2B3C4D&0&00E0",
+    "Name": "PCI Express Upstream Switch Port",
+    "Service": "pci",
+    "Status": "OK",
+    "ConfigManagerErrorCode": 0,
+    "HardwareID": ["PCI\\VEN_11F8&DEV_4052&SUBSYS_405211F8&REV_01", "PCI\\VEN_11F8&DEV_4052&CC_060400", "PCI\\VEN_11F8&DEV_4052&CC_0604"],
+    "Bag": {
+      "DEVPKEY_Device_LocationInfo": "PCI bus 1, device 0, function 0",
+      "DEVPKEY_Device_Parent": "PCI\\VEN_8086&DEV_A0BD&SUBSYS_00000000&REV_20\\3&11583659&0&E0",
+      "DEVPKEY_PciDevice_BaseClass": 6, "DEVPKEY_PciDevice_SubClass": 4, "DEVPKEY_PciDevice_ProgIf": 0,
+      "DEVPKEY_PciDevice_DeviceType": 9,
+      "DEVPKEY_PciDevice_CurrentLinkSpeed": 4, "DEVPKEY_PciDevice_CurrentLinkWidth": 16,
+      "DEVPKEY_PciDevice_MaxLinkSpeed": 4, "DEVPKEY_PciDevice_MaxLinkWidth": 16,
+      "DEVPKEY_PciDevice_AcsSupport": 0, "DEVPKEY_PciDevice_AcsCapabilityRegister": 127,
+      "DEVPKEY_PciDevice_AERCapabilityPresent": true,
+      "DEVPKEY_Device_IsPresent": true
+    }
+  },
+  {
+    "PNPDeviceID": "PCI\\VEN_11F8&DEV_4052&SUBSYS_405211F8&REV_01\\5&2B3C4D5E&0&080010",
+    "Name": "PCI Express Downstream Switch Port",
+    "Service": "pci",
+    "Status": "OK",
+    "ConfigManagerErrorCode": 0,
+    "HardwareID": ["PCI\\VEN_11F8&DEV_4052&SUBSYS_405211F8&REV_01", "PCI\\VEN_11F8&DEV_4052&CC_060400", "PCI\\VEN_11F8&DEV_4052&CC_0604"],
+    "Bag": {
+      "DEVPKEY_Device_LocationInfo": "PCI bus 2, device 1, function 0",
+      "DEVPKEY_Device_Parent": "PCI\\VEN_11F8&DEV_4052&SUBSYS_405211F8&REV_01\\4&1A2B3C4D&0&00E0",
+      "DEVPKEY_PciDevice_BaseClass": 6, "DEVPKEY_PciDevice_SubClass": 4, "DEVPKEY_PciDevice_ProgIf": 0,
+      "DEVPKEY_PciDevice_DeviceType": 10,
+      "DEVPKEY_PciDevice_AcsSupport": 0, "DEVPKEY_PciDevice_AcsCapabilityRegister": 127,
+      "DEVPKEY_Device_IsPresent": true
+    }
+  },
+  {
+    "PNPDeviceID": "PCI\\VEN_11F8&DEV_4052&SUBSYS_405211F8&REV_01\\5&2B3C4D5E&0&100010",
+    "Name": "PCI Express Downstream Switch Port",
+    "Service": "pci",
+    "Status": "OK",
+    "ConfigManagerErrorCode": 0,
+    "HardwareID": ["PCI\\VEN_11F8&DEV_4052&SUBSYS_405211F8&REV_01", "PCI\\VEN_11F8&DEV_4052&CC_060400", "PCI\\VEN_11F8&DEV_4052&CC_0604"],
+    "Bag": {
+      "DEVPKEY_Device_LocationInfo": "PCI bus 2, device 2, function 0",
+      "DEVPKEY_Device_Parent": "PCI\\VEN_11F8&DEV_4052&SUBSYS_405211F8&REV_01\\4&1A2B3C4D&0&00E0",
+      "DEVPKEY_PciDevice_BaseClass": 6, "DEVPKEY_PciDevice_SubClass": 4, "DEVPKEY_PciDevice_ProgIf": 0,
+      "DEVPKEY_PciDevice_DeviceType": 10,
+      "DEVPKEY_PciDevice_AcsSupport": 2, "DEVPKEY_PciDevice_AcsCapabilityRegister": 0,
+      "DEVPKEY_Device_IsPresent": true
+    }
+  },
+  {
+    "PNPDeviceID": "PCI\\VEN_11F8&DEV_4052&SUBSYS_405211F8&REV_01\\5&2B3C4D5E&0&180010",
+    "Name": "PCI Express Downstream Switch Port",
+    "Service": "pci",
+    "Status": "OK",
+    "ConfigManagerErrorCode": 0,
+    "HardwareID": ["PCI\\VEN_11F8&DEV_4052&SUBSYS_405211F8&REV_01", "PCI\\VEN_11F8&DEV_4052&CC_060400", "PCI\\VEN_11F8&DEV_4052&CC_0604"],
+    "Bag": {
+      "DEVPKEY_Device_LocationInfo": "PCI bus 2, device 3, function 0",
+      "DEVPKEY_Device_Parent": "PCI\\VEN_11F8&DEV_4052&SUBSYS_405211F8&REV_01\\4&1A2B3C4D&0&00E0",
+      "DEVPKEY_PciDevice_BaseClass": 6, "DEVPKEY_PciDevice_SubClass": 4, "DEVPKEY_PciDevice_ProgIf": 0,
+      "DEVPKEY_PciDevice_DeviceType": 10,
+      "DEVPKEY_Device_IsPresent": true
+    }
+  },
+  {
+    "PNPDeviceID": "PCI\\VEN_144D&DEV_A80A&SUBSYS_A801144D&REV_00\\6&3C4D5E6F&0&00000010",
+    "Name": "Standard NVM Express Controller",
+    "Service": "stornvme",
+    "Status": "OK",
+    "ConfigManagerErrorCode": 0,
+    "HardwareID": ["PCI\\VEN_144D&DEV_A80A&SUBSYS_A801144D&REV_00", "PCI\\VEN_144D&DEV_A80A&CC_010802", "PCI\\VEN_144D&DEV_A80A&CC_0108"],
+    "Bag": {
+      "DEVPKEY_Device_LocationInfo": "PCI bus 3, device 0, function 0",
+      "DEVPKEY_Device_Parent": "PCI\\VEN_11F8&DEV_4052&SUBSYS_405211F8&REV_01\\5&2B3C4D5E&0&080010",
+      "DEVPKEY_PciDevice_BaseClass": 1, "DEVPKEY_PciDevice_SubClass": 8, "DEVPKEY_PciDevice_ProgIf": 2,
+      "DEVPKEY_PciDevice_DeviceType": 2,
+      "DEVPKEY_PciDevice_CurrentLinkSpeed": 4, "DEVPKEY_PciDevice_CurrentLinkWidth": 4,
+      "DEVPKEY_PciDevice_MaxLinkSpeed": 4, "DEVPKEY_PciDevice_MaxLinkWidth": 4,
+      "DEVPKEY_PciDevice_InterruptSupport": 7, "DEVPKEY_PciDevice_InterruptMessageMaximum": 33,
+      "DEVPKEY_PciDevice_AERCapabilityPresent": true,
+      "DEVPKEY_Device_IsPresent": true
+    }
+  },
+  {
+    "PNPDeviceID": "PCI\\VEN_144D&DEV_A80A&SUBSYS_A801144D&REV_00\\6&3C4D5E6F&0&00000020",
+    "Name": "Standard NVM Express Controller",
+    "Service": "stornvme",
+    "Status": "OK",
+    "ConfigManagerErrorCode": 0,
+    "HardwareID": ["PCI\\VEN_144D&DEV_A80A&SUBSYS_A801144D&REV_00", "PCI\\VEN_144D&DEV_A80A&CC_010802", "PCI\\VEN_144D&DEV_A80A&CC_0108"],
+    "Bag": {
+      "DEVPKEY_Device_LocationInfo": "PCI bus 4, device 0, function 0",
+      "DEVPKEY_Device_Parent": "PCI\\VEN_11F8&DEV_4052&SUBSYS_405211F8&REV_01\\5&2B3C4D5E&0&100010",
+      "DEVPKEY_PciDevice_BaseClass": 1, "DEVPKEY_PciDevice_SubClass": 8, "DEVPKEY_PciDevice_ProgIf": 2,
+      "DEVPKEY_PciDevice_DeviceType": 2,
+      "DEVPKEY_PciDevice_CurrentLinkSpeed": 3, "DEVPKEY_PciDevice_CurrentLinkWidth": 2,
+      "DEVPKEY_PciDevice_MaxLinkSpeed": 4, "DEVPKEY_PciDevice_MaxLinkWidth": 4,
+      "DEVPKEY_PciDevice_InterruptSupport": 7, "DEVPKEY_PciDevice_InterruptMessageMaximum": 33,
+      "DEVPKEY_PciDevice_AERCapabilityPresent": true,
+      "DEVPKEY_Device_PowerData": [56,0,0,0,1,0,0,0,9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+      "DEVPKEY_Device_IsPresent": true
+    }
+  }
+]

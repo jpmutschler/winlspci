@@ -2,3 +2,4 @@
 data/pci.ids.tmp
 data/pci.ids.bak
 internal/
+dist/
