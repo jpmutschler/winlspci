@@ -376,10 +376,12 @@ database (vendors, a known vendor, a known class) before touching anything,
 keeps the previous copy as `pci.ids.bak`, and forces TLS 1.2 on for older
 Windows PowerShell hosts. The bundled copy is dated in `lspci -Version`.
 
-> **`11f8` reads "PMC-Sierra Inc."** Microsemi acquired PMC-Sierra, Microchip
-> acquired Microsemi, and the vendor ID never changed. A Microchip Switchtec
-> switch shows as PMC-Sierra. There is a test pinning this, so nobody at a
-> bench at 11pm concludes they have the wrong part.
+> **`11f8` is Microchip, whatever name the database shows.** Microsemi acquired
+> PMC-Sierra, Microchip acquired Microsemi, and the vendor ID never changed.
+> Databases before mid-2026 still read "PMC-Sierra Inc.", so a Microchip
+> Switchtec switch showed as PMC-Sierra; the bundled copy now says "Microchip
+> Technology". A test accepts any of the three names, so nobody at a bench at
+> 11pm concludes they have the wrong part.
 
 `pci.ids` is maintained by the PCI ID Project and is BSD/GPL dual-licensed.
 

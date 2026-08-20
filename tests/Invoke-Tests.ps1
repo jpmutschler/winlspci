@@ -141,9 +141,10 @@ It 'resolves a known device' {
 }
 
 It 'resolves the Microchip/Microsemi switch vendor' {
-    # 11f8 still reads "PMC-Sierra" in the upstream database: Microsemi bought
-    # PMC-Sierra, Microchip bought Microsemi, and the ID never changed. Worth
-    # a test so nobody at a bench concludes the card is the wrong part.
+    # 11f8 read "PMC-Sierra" upstream until mid-2026 and "Microchip Technology"
+    # since: Microsemi bought PMC-Sierra, Microchip bought Microsemi, and the ID
+    # never changed. Accept any of the three names, so nobody at a bench
+    # concludes the card is the wrong part whichever database vintage is loaded.
     $n = Get-PciVendorName '11f8'
     Assert-True ($n -like '*PMC-Sierra*' -or $n -like '*Microsemi*' -or $n -like '*Microchip*') `
         "11f8 resolved to '$n'"
