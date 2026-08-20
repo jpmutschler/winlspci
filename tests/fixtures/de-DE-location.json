@@ -1,0 +1,45 @@
+[
+  {
+    "PNPDeviceID": "PCI\\VEN_8086&DEV_A0BD&SUBSYS_00000000&REV_20\\3&11583659&0&E0",
+    "Name": "Intel(R) PCI Express-Root-Port #6 - A0BD",
+    "Service": "pci",
+    "Status": "OK",
+    "ConfigManagerErrorCode": 0,
+    "HardwareID": ["PCI\\VEN_8086&DEV_A0BD&SUBSYS_00000000&REV_20", "PCI\\VEN_8086&DEV_A0BD&CC_060400", "PCI\\VEN_8086&DEV_A0BD&CC_0604"],
+    "Bag": {
+      "DEVPKEY_Device_LocationInfo": "PCI-Bus 0, Gerät 28, Funktion 0",
+      "DEVPKEY_Device_DriverVersion": "10.0.26100.1",
+      "DEVPKEY_Device_Parent": "ACPI\\PNP0A08\\0",
+      "DEVPKEY_PciDevice_BaseClass": 6,
+      "DEVPKEY_PciDevice_SubClass": 4,
+      "DEVPKEY_PciDevice_ProgIf": 0,
+      "DEVPKEY_PciDevice_AERCapabilityPresent": true,
+      "DEVPKEY_Device_IsPresent": true
+    }
+  },
+  {
+    "PNPDeviceID": "PCI\\VEN_1C5C&DEV_174A&SUBSYS_174A1C5C&REV_00\\4&391CC7C&0&0030",
+    "Name": "Standardmäßiger NVM Express-Controller",
+    "Service": "stornvme",
+    "Status": "OK",
+    "ConfigManagerErrorCode": 0,
+    "HardwareID": ["PCI\\VEN_1C5C&DEV_174A&SUBSYS_174A1C5C&REV_00", "PCI\\VEN_1C5C&DEV_174A&CC_010802", "PCI\\VEN_1C5C&DEV_174A&CC_0108"],
+    "Bag": {
+      "DEVPKEY_Device_LocationInfo": "PCI-Bus 1, Gerät 0, Funktion 0",
+      "DEVPKEY_Device_DriverVersion": "10.0.26100.8972",
+      "DEVPKEY_Device_Parent": "PCI\\VEN_8086&DEV_A0BD&SUBSYS_00000000&REV_20\\3&11583659&0&E0",
+      "DEVPKEY_PciDevice_BaseClass": 1,
+      "DEVPKEY_PciDevice_SubClass": 8,
+      "DEVPKEY_PciDevice_ProgIf": 2,
+      "DEVPKEY_PciDevice_CurrentLinkSpeed": 3,
+      "DEVPKEY_PciDevice_CurrentLinkWidth": 4,
+      "DEVPKEY_PciDevice_MaxLinkSpeed": 3,
+      "DEVPKEY_PciDevice_MaxLinkWidth": 4,
+      "DEVPKEY_PciDevice_CurrentPayloadSize": 1,
+      "DEVPKEY_PciDevice_MaxPayloadSize": 2,
+      "DEVPKEY_PciDevice_MaxReadRequestSize": 2,
+      "DEVPKEY_PciDevice_AERCapabilityPresent": true,
+      "DEVPKEY_Device_IsPresent": true
+    }
+  }
+]

@@ -1,0 +1,72 @@
+[
+  {
+    "PNPDeviceID": "PCI\\VEN_1414&DEV_B111&SUBSYS_00000000&REV_01\\6&3851&0&00",
+    "Name": "Microsoft NVMe Direct Disk",
+    "Service": "stornvme",
+    "Status": "OK",
+    "ConfigManagerErrorCode": 0,
+    "HardwareID": ["PCI\\VEN_1414&DEV_B111&SUBSYS_00000000&REV_01", "PCI\\VEN_1414&DEV_B111&CC_010802", "PCI\\VEN_1414&DEV_B111&CC_0108"],
+    "Bag": {
+      "DEVPKEY_Device_LocationInfo": "PCI bus 3690752, device 0, function 0",
+      "DEVPKEY_Device_BusNumber": 3690752,
+      "DEVPKEY_Device_Address": 0,
+      "DEVPKEY_Device_DriverVersion": "10.0.26100.1",
+      "DEVPKEY_Device_Parent": "VMBUS\\{44C4F61D-4444-4400-9D52-802E27EDE19F}\\{3851...}",
+      "DEVPKEY_PciDevice_BaseClass": 1,
+      "DEVPKEY_PciDevice_SubClass": 8,
+      "DEVPKEY_PciDevice_ProgIf": 2,
+      "DEVPKEY_PciDevice_CurrentPayloadSize": 0,
+      "DEVPKEY_PciDevice_MaxPayloadSize": 0,
+      "DEVPKEY_PciDevice_MaxReadRequestSize": 2,
+      "DEVPKEY_PciDevice_AERCapabilityPresent": false,
+      "DEVPKEY_Device_IsPresent": true
+    }
+  },
+  {
+    "PNPDeviceID": "PCI\\VEN_1414&DEV_00BA&SUBSYS_00000000&REV_00\\6&7870&0&00",
+    "Name": "Microsoft Azure Network Adapter Virtual Bus",
+    "Service": "mana",
+    "Status": "OK",
+    "ConfigManagerErrorCode": 0,
+    "HardwareID": ["PCI\\VEN_1414&DEV_00BA&SUBSYS_00000000&REV_00", "PCI\\VEN_1414&DEV_00BA&CC_020000", "PCI\\VEN_1414&DEV_00BA&CC_0200"],
+    "Bag": {
+      "DEVPKEY_Device_LocationInfo": "PCI bus 7892992, device 0, function 0",
+      "DEVPKEY_Device_BusNumber": 7892992,
+      "DEVPKEY_Device_Address": 0,
+      "DEVPKEY_Device_DriverVersion": "10.0.26100.1",
+      "DEVPKEY_Device_Parent": "VMBUS\\{44C4F61D-4444-4400-9D52-802E27EDE19F}\\{7870...}",
+      "DEVPKEY_PciDevice_BaseClass": 2,
+      "DEVPKEY_PciDevice_SubClass": 0,
+      "DEVPKEY_PciDevice_ProgIf": 0,
+      "DEVPKEY_PciDevice_AERCapabilityPresent": false,
+      "DEVPKEY_Device_IsPresent": true
+    }
+  },
+  {
+    "PNPDeviceID": "PCI\\VEN_15B3&DEV_1016&SUBSYS_000315B3&REV_80\\6&556F&0&0200",
+    "Name": "Mellanox ConnectX-4 Lx Virtual Ethernet Adapter",
+    "Service": "mlx5",
+    "Status": "OK",
+    "ConfigManagerErrorCode": 0,
+    "HardwareID": ["PCI\\VEN_15B3&DEV_1016&SUBSYS_000315B3&REV_80", "PCI\\VEN_15B3&DEV_1016&CC_020000", "PCI\\VEN_15B3&DEV_1016&CC_0200"],
+    "Bag": {
+      "DEVPKEY_Device_LocationInfo": "PCI bus 5598976, device 2, function 0",
+      "DEVPKEY_Device_BusNumber": 5598976,
+      "DEVPKEY_Device_Address": 131072,
+      "DEVPKEY_Device_DriverVersion": "2.80.25134.0",
+      "DEVPKEY_Device_Parent": "VMBUS\\{44C4F61D-4444-4400-9D52-802E27EDE19F}\\{556F...}",
+      "DEVPKEY_PciDevice_BaseClass": 2,
+      "DEVPKEY_PciDevice_SubClass": 0,
+      "DEVPKEY_PciDevice_ProgIf": 0,
+      "DEVPKEY_PciDevice_CurrentLinkSpeed": 3,
+      "DEVPKEY_PciDevice_CurrentLinkWidth": 8,
+      "DEVPKEY_PciDevice_MaxLinkSpeed": 3,
+      "DEVPKEY_PciDevice_MaxLinkWidth": 8,
+      "DEVPKEY_PciDevice_CurrentPayloadSize": 0,
+      "DEVPKEY_PciDevice_MaxPayloadSize": 2,
+      "DEVPKEY_PciDevice_MaxReadRequestSize": 2,
+      "DEVPKEY_PciDevice_AERCapabilityPresent": false,
+      "DEVPKEY_Device_IsPresent": true
+    }
+  }
+]

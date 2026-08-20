@@ -22,7 +22,92 @@ $script:WantedKeys = @(
     'DEVPKEY_PciDevice_MaxPayloadSize'
     'DEVPKEY_PciDevice_MaxReadRequestSize'
     'DEVPKEY_PciDevice_AERCapabilityPresent'
+    'DEVPKEY_Device_IsPresent'
 )
+
+
+# ---------------------------------------------------------------- fixtures
+#
+# A recorded fixture stands in for the machine: an array of entity objects
+# (PNPDeviceID, Name, Service, Status, ConfigManagerErrorCode, HardwareID)
+# each carrying a Bag of DEVPKEY values -- exactly what Get-PciDevice
+# consumes after the two CIM calls. With one loaded, enumeration is
+# deterministic, machine-independent and instant, which is how the
+# interesting cases (Azure's packed bus numbers, a German LocationInfo, a
+# phantom device, a switch hierarchy) get tested on every box, not just the
+# one that happened to have them. Test-only: set through the module scope,
+# never from the CLI.
+$script:Fixture = $null
+
+function Set-PciFixture {
+    <#
+    .SYNOPSIS
+      Load a recorded fixture (JSON) as the device source, or -Clear it.
+    #>
+    param([string]$Path, [switch]$Clear)
+    if ($Clear) { $script:Fixture = $null; return }
+    $resolved = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
+    if (-not (Test-Path -LiteralPath $resolved -PathType Leaf)) { throw "Set-PciFixture: no such file '$Path'" }
+    $raw = Get-Content -LiteralPath $resolved -Raw -Encoding UTF8 | ConvertFrom-Json
+    $entities = @()
+    foreach ($e in @($raw)) {
+        # Bag: PSCustomObject -> hashtable, so Get-BagValue's ContainsKey works.
+        $bag = @{}
+        if ($e.PSObject.Properties['Bag'] -and $null -ne $e.Bag) {
+            foreach ($p in $e.Bag.PSObject.Properties) {
+                if ($null -ne $p.Value -and "$($p.Value)" -ne '') { $bag[$p.Name] = $p.Value }
+            }
+        }
+        $entities += [pscustomobject]@{
+            PNPDeviceID            = $e.PNPDeviceID
+            Name                   = Get-Field $e 'Name'
+            Service                = Get-Field $e 'Service'
+            Status                 = Get-Field $e 'Status'
+            ConfigManagerErrorCode = Get-Field $e 'ConfigManagerErrorCode'
+            HardwareID             = @(Get-Field $e 'HardwareID')
+            Bag                    = $bag
+        }
+    }
+    $script:Fixture = $entities
+}
+
+
+function Get-PciEntity {
+    <#
+    .SYNOPSIS
+      The PCI entities to enumerate: from the machine, or from a fixture.
+    .DESCRIPTION
+      One projected WQL query for the PCI entities.
+
+      The projection matters more than the WHERE: SELECT * on Win32_PnPEntity
+      costs ~1.3s on a laptop and naming only the columns this module reads
+      halves it, because the provider materialises far less per instance.
+
+      The LIKE text is exactly "PCI\\VEN[_]%": two backslashes (one level of
+      string escaping -- LIKE does not consume a second), and [_] because a
+      bare underscore is WQL's single-character wildcard. Get this wrong and
+      the query returns ZERO rows silently, rendering a machine with no PCI
+      bus; a test pins the row count against a client-side -like.
+
+      $VendorId is only ever four validated hex digits (ConvertTo-DeviceFilter),
+      so interpolating it into the query is safe.
+    #>
+    param([string]$VendorId = '')
+
+    if ($null -ne $script:Fixture) {
+        $set = @($script:Fixture | Where-Object { $_.PNPDeviceID -like 'PCI\VEN_*' })
+        if ($VendorId) { $set = @($set | Where-Object { $_.PNPDeviceID -like "PCI\VEN_${VendorId}*" }) }
+        return $set
+    }
+
+    $where = 'PNPDeviceID LIKE "PCI\\VEN[_]%"'
+    if ($VendorId) {
+        $where = 'PNPDeviceID LIKE "PCI\\VEN[_]{0}%"' -f $VendorId
+    }
+    $query = 'SELECT DeviceID,PNPDeviceID,Name,Service,Status,ConfigManagerErrorCode,HardwareID ' +
+             "FROM Win32_PnPEntity WHERE $where"
+    return @(Get-CimInstance -Query $query -ErrorAction SilentlyContinue)
+}
 
 
 function Get-DevicePropertyBag {
@@ -53,6 +138,10 @@ function Get-DevicePropertyBag {
       between a device that does not expose link state and a dead link.
     #>
     param($CimInstance)
+
+    # Fixture entities carry their bag already.
+    $fixtureBag = Get-Field $CimInstance 'Bag'
+    if ($null -ne $fixtureBag) { return $fixtureBag }
 
     $bag = @{}
     try {
@@ -112,10 +201,23 @@ function ConvertTo-Bdf {
     param($LocationInfo, $BusNumber, $Address)
 
     $domain = 0; $bus = $null; $dev = $null; $fun = $null
-    if ($LocationInfo -and $LocationInfo -match 'bus (\d+), device (\d+), function (\d+)') {
+    # Positional, not keyed on the English words: pci.sys localises the string
+    # ("PCI-Bus 0, Gerät 2, Funktion 0" on a German system). Three integers in
+    # order is the invariant; the words are not. [0-9] with length bounds, not
+    # \d: .NET's \d matches every Unicode digit, which then fails the cast.
+    # A device above 0x1f or a function above 7 is not a PCI address at all
+    # (and -s could never match it), so such a string is treated as unusable.
+    $parsed = $false
+    if ($LocationInfo -and $LocationInfo -match '^[^0-9]*([0-9]{1,10})[^0-9]+([0-9]{1,5})[^0-9]+([0-9]{1,5})[^0-9]*$') {
         $raw = [int64]$Matches[1]; $dev = [int]$Matches[2]; $fun = [int]$Matches[3]
-        $bus = [int]($raw -band 0xFF)
-        $domain = [int](($raw -shr 8) -band 0xFFFF)
+        if ($dev -le 0x1f -and $fun -le 7 -and $raw -le 0xFFFFFF) {
+            $bus = [int]($raw -band 0xFF)
+            $domain = [int](($raw -shr 8) -band 0xFFFF)
+            $parsed = $true
+        }
+    }
+    if ($parsed) {
+        # from the location string
     } elseif ($null -ne $BusNumber -and $null -ne $Address) {
         $raw = [int64]$BusNumber
         $bus = [int]($raw -band 0xFF)

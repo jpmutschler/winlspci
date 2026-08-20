@@ -1,0 +1,62 @@
+[
+  {
+    "PNPDeviceID": "PCI\\VEN_8086&DEV_A0BD&SUBSYS_00000000&REV_20\\3&11583659&0&E0",
+    "Name": "Intel(R) PCI Express Root Port #6 - A0BD",
+    "Service": "pci",
+    "Status": "OK",
+    "ConfigManagerErrorCode": 0,
+    "HardwareID": ["PCI\\VEN_8086&DEV_A0BD&SUBSYS_00000000&REV_20", "PCI\\VEN_8086&DEV_A0BD&CC_060400", "PCI\\VEN_8086&DEV_A0BD&CC_0604"],
+    "Bag": {
+      "DEVPKEY_Device_LocationInfo": "PCI bus 0, device 28, function 0",
+      "DEVPKEY_Device_BusNumber": 0,
+      "DEVPKEY_Device_Address": 1835008,
+      "DEVPKEY_Device_Parent": "ACPI\\PNP0A08\\0",
+      "DEVPKEY_PciDevice_BaseClass": 6,
+      "DEVPKEY_PciDevice_SubClass": 4,
+      "DEVPKEY_PciDevice_ProgIf": 0,
+      "DEVPKEY_PciDevice_AERCapabilityPresent": true,
+      "DEVPKEY_Device_IsPresent": true
+    }
+  },
+  {
+    "PNPDeviceID": "PCI\\VEN_10DE&DEV_2684&SUBSYS_889E1043&REV_A1\\4&2B1E9A3C&0&00E0",
+    "Name": "NVIDIA GeForce RTX 4090",
+    "Service": "nvlddmkm",
+    "Status": "Unknown",
+    "ConfigManagerErrorCode": 45,
+    "HardwareID": ["PCI\\VEN_10DE&DEV_2684&SUBSYS_889E1043&REV_A1", "PCI\\VEN_10DE&DEV_2684&CC_030000", "PCI\\VEN_10DE&DEV_2684&CC_0300"],
+    "Bag": {
+      "DEVPKEY_Device_LocationInfo": "PCI bus 1, device 0, function 0",
+      "DEVPKEY_Device_BusNumber": 1,
+      "DEVPKEY_Device_Address": 0,
+      "DEVPKEY_Device_DriverVersion": "32.0.15.6094",
+      "DEVPKEY_Device_Parent": "PCI\\VEN_8086&DEV_A0BD&SUBSYS_00000000&REV_20\\3&11583659&0&E0",
+      "DEVPKEY_PciDevice_BaseClass": 3,
+      "DEVPKEY_PciDevice_SubClass": 0,
+      "DEVPKEY_PciDevice_ProgIf": 0,
+      "DEVPKEY_PciDevice_CurrentLinkSpeed": 4,
+      "DEVPKEY_PciDevice_CurrentLinkWidth": 16,
+      "DEVPKEY_PciDevice_MaxLinkSpeed": 4,
+      "DEVPKEY_PciDevice_MaxLinkWidth": 16,
+      "DEVPKEY_PciDevice_AERCapabilityPresent": true,
+      "DEVPKEY_Device_IsPresent": false
+    }
+  },
+  {
+    "PNPDeviceID": "PCI\\VEN_8086&DEV_15F3&SUBSYS_00008086&REV_03\\4&1F2A0B5&0&00E1",
+    "Name": "Intel(R) Ethernet Controller I225-V",
+    "Service": "e2fnexpress",
+    "Status": "Unknown",
+    "ConfigManagerErrorCode": 45,
+    "HardwareID": ["PCI\\VEN_8086&DEV_15F3&SUBSYS_00008086&REV_03", "PCI\\VEN_8086&DEV_15F3&CC_020000", "PCI\\VEN_8086&DEV_15F3&CC_0200"],
+    "Bag": {
+      "DEVPKEY_Device_LocationInfo": "PCI bus 2, device 0, function 0",
+      "DEVPKEY_Device_BusNumber": 2,
+      "DEVPKEY_Device_Address": 0,
+      "DEVPKEY_Device_Parent": "PCI\\VEN_8086&DEV_A0BD&SUBSYS_00000000&REV_20\\3&11583659&0&E0",
+      "DEVPKEY_PciDevice_BaseClass": 2,
+      "DEVPKEY_PciDevice_SubClass": 0,
+      "DEVPKEY_PciDevice_ProgIf": 0
+    }
+  }
+]

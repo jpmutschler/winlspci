@@ -1,0 +1,69 @@
+# lspci -n -v
+00:1c.0 0604: 8086:a0bd (rev 20)
+        LnkSta: not reported by this device
+        Driver: pci (10.0.26100.1)
+01:00.0 0108: 1c5c:174a (rev 00)
+        LnkSta: 8GT/s x4 (max 8GT/s x4)
+        Driver: stornvme (10.0.26100.8972)
+# lspci -t -n
+-00:1c.0 [8086:a0bd]
+ \-01:00.0 [1c5c:174a]  (8GT/s x4)
+# attributes (names excluded)
+00:1c.0 Slot=00:1c.0 present=True
+00:1c.0 Domain=0 present=True
+00:1c.0 VendorId=8086 present=True
+00:1c.0 DeviceId=a0bd present=True
+00:1c.0 SubsystemVendorId=0000 present=True
+00:1c.0 SubsystemId=0000 present=True
+00:1c.0 Revision=20 present=True
+00:1c.0 ClassCode=0604 present=True
+00:1c.0 ProgIf=0 present=True
+00:1c.0 Driver=pci present=True
+00:1c.0 DriverVersion=10.0.26100.1 present=True
+00:1c.0 Status=OK present=True
+00:1c.0 Problem=0 present=True
+00:1c.0 NumaNode= present=False
+00:1c.0 LinkStateReported=False present=True
+00:1c.0 LinkSpeed= present=False
+00:1c.0 LinkSpeedRaw= present=False
+00:1c.0 LinkWidth= present=False
+00:1c.0 MaxLinkSpeed= present=False
+00:1c.0 MaxLinkSpeedRaw= present=False
+00:1c.0 MaxLinkWidth= present=False
+00:1c.0 Downtrained=False present=True
+00:1c.0 MaxPayloadSize= present=False
+00:1c.0 MaxPayloadSizeSupported= present=False
+00:1c.0 MaxReadRequestSize= present=False
+00:1c.0 AerCapable=True present=True
+00:1c.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:1c.0 InstanceId=PCI\VEN_8086&DEV_A0BD&SUBSYS_00000000&REV_20\3&11583659&0&E0 present=True
+00:1c.0 Present=True present=True
+01:00.0 Slot=01:00.0 present=True
+01:00.0 Domain=0 present=True
+01:00.0 VendorId=1c5c present=True
+01:00.0 DeviceId=174a present=True
+01:00.0 SubsystemVendorId=1c5c present=True
+01:00.0 SubsystemId=174a present=True
+01:00.0 Revision=00 present=True
+01:00.0 ClassCode=0108 present=True
+01:00.0 ProgIf=2 present=True
+01:00.0 Driver=stornvme present=True
+01:00.0 DriverVersion=10.0.26100.8972 present=True
+01:00.0 Status=OK present=True
+01:00.0 Problem=0 present=True
+01:00.0 NumaNode= present=False
+01:00.0 LinkStateReported=True present=True
+01:00.0 LinkSpeed=8GT/s present=True
+01:00.0 LinkSpeedRaw=3 present=True
+01:00.0 LinkWidth=4 present=True
+01:00.0 MaxLinkSpeed=8GT/s present=True
+01:00.0 MaxLinkSpeedRaw=3 present=True
+01:00.0 MaxLinkWidth=4 present=True
+01:00.0 Downtrained=False present=True
+01:00.0 MaxPayloadSize=256 present=True
+01:00.0 MaxPayloadSizeSupported=512 present=True
+01:00.0 MaxReadRequestSize=512 present=True
+01:00.0 AerCapable=True present=True
+01:00.0 ParentInstanceId=PCI\VEN_8086&DEV_A0BD&SUBSYS_00000000&REV_20\3&11583659&0&E0 present=True
+01:00.0 InstanceId=PCI\VEN_1C5C&DEV_174A&SUBSYS_174A1C5C&REV_00\4&391CC7C&0&0030 present=True
+01:00.0 Present=True present=True

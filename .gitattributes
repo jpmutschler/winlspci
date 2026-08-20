@@ -1,0 +1,5 @@
+# Goldens are compared line-by-line by the suite; keep their bytes as committed
+# so a contributor's autocrlf setting cannot turn them into whole-file diffs.
+*.golden.txt -text
+tests/fixtures/*.json -text
+data/pci.ids -text

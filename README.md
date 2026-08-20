@@ -167,7 +167,7 @@ typed is worse than one that says no.) Anything else unknown exits 64.
 | `-ListAttributes` | Discover what is queryable |
 | `-Delimited` | `\|`-separated records, for `-split` / `cut` / `awk` habits |
 | `-Delimiter` / `-Header` | Change the separator (e.g. tab); name the columns |
-| `-Json` / `-Csv` | Structured output; `-Csv` quotes properly |
+| `-Json` / `-Csv` | Structured output; `-Csv` quotes properly. The JSON envelope carries `schemaVersion` (currently 1), `winlspciVersion`, `generatedAt` and `computerName` (so two machines can be diffed — note it names your host if you paste the output publicly); additive changes keep the schema version, a rename or change of meaning bumps it |
 | `-Downtrained` | Only devices below their maximum speed or width (the `Downtrained` property). A filter: exits 1 when nothing is |
 
 ---
@@ -453,6 +453,16 @@ powershell -ExecutionPolicy Bypass -File tests\Invoke-Tests.ps1
 The same suite runs on every push under Windows PowerShell 5.1 on a GitHub
 `windows-latest` runner (`.github/workflows/tests.yml`) — a different machine
 with a different PCI inventory, which is the point.
+
+**Recorded fixtures.** `tests\fixtures\*.json` are captured PCI enumerations
+(entities plus their DEVPKEY bags) that the suite replays through
+`Get-PciDevice` in place of the CIM calls, so the cases that matter — Azure's
+packed bus numbers, a German `LocationInfo`, a phantom device, the author's
+laptop — are tested on every machine, deterministically. Each has a
+`.golden.txt` with its name-free rendering; a change that alters output shows
+up as a golden diff, and `tests\Invoke-Tests.ps1 -UpdateGolden` rewrites them
+on purpose. Record your own box with
+`tests\Export-PciFixture.ps1 -Path tests\fixtures\<name>.json`.
 
 No Pester required, deliberately: stock Windows ships Pester 3.4.0, whose
 `Should Be` syntax is incompatible with Pester 5's `Should -Be`, so a Pester

@@ -1,0 +1,614 @@
+[
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_A0A8&SUBSYS_72708086&REV_20\\3&11583659&0&F0",
+        "Name":  "Intel(R) Serial IO UART Host Controller - A0A8",
+        "Service":  "iaLPSS2_UART2_TGL",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_A0A8&SUBSYS_72708086&REV_20",
+                           "PCI\\VEN_8086&DEV_A0A8&SUBSYS_72708086",
+                           "PCI\\VEN_8086&DEV_A0A8&CC_078000",
+                           "PCI\\VEN_8086&DEV_A0A8&CC_0780"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  1966080,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "30.100.2031.2",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 30, function 0",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_BaseClass":  7,
+                    "DEVPKEY_PciDevice_ProgIf":  0,
+                    "DEVPKEY_PciDevice_SubClass":  128
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_9A13&SUBSYS_72708086&REV_01\\3&11583659&0&68",
+        "Name":  "Intel(R) USB 3.10 eXtensible Host Controller - 1.20 (Microsoft)",
+        "Service":  "USBXHCI",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_9A13&SUBSYS_72708086&REV_01",
+                           "PCI\\VEN_8086&DEV_9A13&SUBSYS_72708086",
+                           "PCI\\VEN_8086&DEV_9A13&CC_0C0330",
+                           "PCI\\VEN_8086&DEV_9A13&CC_0C03"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  851968,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "10.0.26100.8972",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 13, function 0",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_BaseClass":  12,
+                    "DEVPKEY_PciDevice_ProgIf":  48,
+                    "DEVPKEY_PciDevice_SubClass":  3
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_10DE&DEV_25A0&SUBSYS_00541414&REV_A1\\4&32093AAF&0&00E8",
+        "Name":  "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+        "Service":  "nvlddmkm",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_10DE&DEV_25A0&SUBSYS_00541414&REV_A1",
+                           "PCI\\VEN_10DE&DEV_25A0&SUBSYS_00541414",
+                           "PCI\\VEN_10DE&DEV_25A0&CC_030200",
+                           "PCI\\VEN_10DE&DEV_25A0&CC_0302"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  0,
+                    "DEVPKEY_Device_BusNumber":  243,
+                    "DEVPKEY_Device_DriverVersion":  "32.0.16.1088",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 243, device 0, function 0",
+                    "DEVPKEY_Device_Parent":  "PCI\\VEN_8086&DEV_A0B0&SUBSYS_72708086&REV_20\\3&11583659&0&E8",
+                    "DEVPKEY_PciDevice_AERCapabilityPresent":  true,
+                    "DEVPKEY_PciDevice_BaseClass":  3,
+                    "DEVPKEY_PciDevice_CurrentLinkSpeed":  3,
+                    "DEVPKEY_PciDevice_CurrentLinkWidth":  4,
+                    "DEVPKEY_PciDevice_CurrentPayloadSize":  1,
+                    "DEVPKEY_PciDevice_MaxLinkSpeed":  4,
+                    "DEVPKEY_PciDevice_MaxLinkWidth":  16,
+                    "DEVPKEY_PciDevice_MaxPayloadSize":  1,
+                    "DEVPKEY_PciDevice_MaxReadRequestSize":  2,
+                    "DEVPKEY_PciDevice_ProgIf":  0,
+                    "DEVPKEY_PciDevice_SubClass":  2
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_A0D0&SUBSYS_00491414&REV_20\\3&11583659&0&86",
+        "Name":  "Intel(R) Precise Touch and Stylus (Intel(R) PTS) - Base Driver - Port #1",
+        "Service":  "IntelTHCBase",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_A0D0&SUBSYS_00491414&REV_20",
+                           "PCI\\VEN_8086&DEV_A0D0&SUBSYS_00491414",
+                           "PCI\\VEN_8086&DEV_A0D0&CC_090100",
+                           "PCI\\VEN_8086&DEV_A0D0&CC_0901"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  1048582,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "3.0.101.251",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 16, function 6",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_BaseClass":  9,
+                    "DEVPKEY_PciDevice_ProgIf":  0,
+                    "DEVPKEY_PciDevice_SubClass":  1
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_A0ED&SUBSYS_72708086&REV_20\\3&11583659&0&A0",
+        "Name":  "Intel(R) USB 3.10 eXtensible Host Controller - 1.20 (Microsoft)",
+        "Service":  "USBXHCI",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_A0ED&SUBSYS_72708086&REV_20",
+                           "PCI\\VEN_8086&DEV_A0ED&SUBSYS_72708086",
+                           "PCI\\VEN_8086&DEV_A0ED&CC_0C0330",
+                           "PCI\\VEN_8086&DEV_A0ED&CC_0C03"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  1310720,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "10.0.26100.8972",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 20, function 0",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_BaseClass":  12,
+                    "DEVPKEY_PciDevice_ProgIf":  48,
+                    "DEVPKEY_PciDevice_SubClass":  3
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_A0D8&SUBSYS_72708086&REV_20\\3&11583659&0&80",
+        "Name":  "Intel(R) Serial IO I2C Host Controller - A0D8",
+        "Service":  "iaLPSS2_I2C_TGL",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_A0D8&SUBSYS_72708086&REV_20",
+                           "PCI\\VEN_8086&DEV_A0D8&SUBSYS_72708086",
+                           "PCI\\VEN_8086&DEV_A0D8&CC_0C8000",
+                           "PCI\\VEN_8086&DEV_A0D8&CC_0C80"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  1048576,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "30.100.2031.2",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 16, function 0",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_BaseClass":  12,
+                    "DEVPKEY_PciDevice_ProgIf":  0,
+                    "DEVPKEY_PciDevice_SubClass":  128
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_A0E9&SUBSYS_72708086&REV_20\\3&11583659&0&A9",
+        "Name":  "Intel(R) Serial IO I2C Host Controller - A0E9",
+        "Service":  "iaLPSS2_I2C_TGL",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_A0E9&SUBSYS_72708086&REV_20",
+                           "PCI\\VEN_8086&DEV_A0E9&SUBSYS_72708086",
+                           "PCI\\VEN_8086&DEV_A0E9&CC_0C8000",
+                           "PCI\\VEN_8086&DEV_A0E9&CC_0C80"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  1376257,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "30.100.2031.2",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 21, function 1",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_BaseClass":  12,
+                    "DEVPKEY_PciDevice_ProgIf":  0,
+                    "DEVPKEY_PciDevice_SubClass":  128
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_A0BD&SUBSYS_00000000&REV_20\\3&11583659&0&E0",
+        "Name":  "Intel(R) PCI Express Root Port #6 - A0BD",
+        "Service":  "pci",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_A0BD&SUBSYS_00000000&REV_20",
+                           "PCI\\VEN_8086&DEV_A0BD&SUBSYS_00000000",
+                           "PCI\\VEN_8086&DEV_A0BD&REV_20",
+                           "PCI\\VEN_8086&DEV_A0BD",
+                           "PCI\\VEN_8086&DEV_A0BD&CC_060400",
+                           "PCI\\VEN_8086&DEV_A0BD&CC_0604"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  1835008,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "10.1.24.5",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 28, function 0",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_AERCapabilityPresent":  false,
+                    "DEVPKEY_PciDevice_BaseClass":  6,
+                    "DEVPKEY_PciDevice_ProgIf":  0,
+                    "DEVPKEY_PciDevice_SubClass":  4
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_9A0D&SUBSYS_72708086&REV_01\\3&11583659&0&50",
+        "Name":  "Intel(R) Platform Monitoring Technology Driver",
+        "Service":  "IntelPMT",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_9A0D&SUBSYS_72708086&REV_01",
+                           "PCI\\VEN_8086&DEV_9A0D&SUBSYS_72708086",
+                           "PCI\\VEN_8086&DEV_9A0D&CC_118000",
+                           "PCI\\VEN_8086&DEV_9A0D&CC_1180"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  655360,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "10.0.26100.8972",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 10, function 0",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_AERCapabilityPresent":  false,
+                    "DEVPKEY_PciDevice_BaseClass":  17,
+                    "DEVPKEY_PciDevice_CurrentPayloadSize":  0,
+                    "DEVPKEY_PciDevice_MaxPayloadSize":  0,
+                    "DEVPKEY_PciDevice_MaxReadRequestSize":  0,
+                    "DEVPKEY_PciDevice_ProgIf":  0,
+                    "DEVPKEY_PciDevice_SubClass":  128
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_A0B0&SUBSYS_72708086&REV_20\\3&11583659&0&E8",
+        "Name":  "Intel(R) PCI Express Root Port #9 - A0B0",
+        "Service":  "pci",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_A0B0&SUBSYS_72708086&REV_20",
+                           "PCI\\VEN_8086&DEV_A0B0&SUBSYS_72708086",
+                           "PCI\\VEN_8086&DEV_A0B0&CC_060400",
+                           "PCI\\VEN_8086&DEV_A0B0&CC_0604"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  1900544,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "10.1.24.5",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 29, function 0",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_AERCapabilityPresent":  false,
+                    "DEVPKEY_PciDevice_BaseClass":  6,
+                    "DEVPKEY_PciDevice_ProgIf":  0,
+                    "DEVPKEY_PciDevice_SubClass":  4
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_9A09&SUBSYS_72708086&REV_01\\3&11583659&0&30",
+        "Name":  "PCI Express Root Port",
+        "Service":  "pci",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_9A09&SUBSYS_72708086&REV_01",
+                           "PCI\\VEN_8086&DEV_9A09&SUBSYS_72708086",
+                           "PCI\\VEN_8086&DEV_9A09&CC_060400",
+                           "PCI\\VEN_8086&DEV_9A09&CC_0604"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  393216,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "10.0.26100.8972",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 6, function 0",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_AERCapabilityPresent":  true,
+                    "DEVPKEY_PciDevice_BaseClass":  6,
+                    "DEVPKEY_PciDevice_ProgIf":  0,
+                    "DEVPKEY_PciDevice_SubClass":  4
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_9A23&SUBSYS_72708086&REV_01\\3&11583659&0&38",
+        "Name":  "PCI Express Root Port",
+        "Service":  "pci",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_9A23&SUBSYS_72708086&REV_01",
+                           "PCI\\VEN_8086&DEV_9A23&SUBSYS_72708086",
+                           "PCI\\VEN_8086&DEV_9A23&CC_060400",
+                           "PCI\\VEN_8086&DEV_9A23&CC_0604"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  458752,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "10.0.26100.8972",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 7, function 0",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_AERCapabilityPresent":  false,
+                    "DEVPKEY_PciDevice_BaseClass":  6,
+                    "DEVPKEY_PciDevice_ProgIf":  0,
+                    "DEVPKEY_PciDevice_SubClass":  4
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_A0EF&SUBSYS_72708086&REV_20\\3&11583659&0&A2",
+        "Name":  "PCI standard RAM Controller",
+        "Service":  null,
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_A0EF&SUBSYS_72708086&REV_20",
+                           "PCI\\VEN_8086&DEV_A0EF&SUBSYS_72708086",
+                           "PCI\\VEN_8086&DEV_A0EF&CC_050000",
+                           "PCI\\VEN_8086&DEV_A0EF&CC_0500"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  1310722,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "10.0.26100.1150",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 20, function 2",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_BaseClass":  5,
+                    "DEVPKEY_PciDevice_ProgIf":  0,
+                    "DEVPKEY_PciDevice_SubClass":  0
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_A0A4&SUBSYS_72708086&REV_20\\3&11583659&0&FD",
+        "Name":  "Intel(R) SPI (flash) Controller - A0A4",
+        "Service":  null,
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_A0A4&SUBSYS_72708086&REV_20",
+                           "PCI\\VEN_8086&DEV_A0A4&SUBSYS_72708086",
+                           "PCI\\VEN_8086&DEV_A0A4&CC_0C8000",
+                           "PCI\\VEN_8086&DEV_A0A4&CC_0C80"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  2031621,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "10.1.24.5",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 31, function 5",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_BaseClass":  12,
+                    "DEVPKEY_PciDevice_ProgIf":  0,
+                    "DEVPKEY_PciDevice_SubClass":  128
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_2723&SUBSYS_00808086&REV_1A\\4&328243D9&0&00E0",
+        "Name":  "Intel(R) Wi-Fi 6 AX200 160MHz",
+        "Service":  "Netwtw10",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_2723&SUBSYS_00808086&REV_1A",
+                           "PCI\\VEN_8086&DEV_2723&SUBSYS_00808086",
+                           "PCI\\VEN_8086&DEV_2723&CC_028000",
+                           "PCI\\VEN_8086&DEV_2723&CC_0280"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  0,
+                    "DEVPKEY_Device_BusNumber":  242,
+                    "DEVPKEY_Device_DriverVersion":  "24.20.2.1",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 242, device 0, function 0",
+                    "DEVPKEY_Device_Parent":  "PCI\\VEN_8086&DEV_A0BD&SUBSYS_00000000&REV_20\\3&11583659&0&E0",
+                    "DEVPKEY_PciDevice_AERCapabilityPresent":  true,
+                    "DEVPKEY_PciDevice_BaseClass":  2,
+                    "DEVPKEY_PciDevice_CurrentLinkSpeed":  2,
+                    "DEVPKEY_PciDevice_CurrentLinkWidth":  1,
+                    "DEVPKEY_PciDevice_CurrentPayloadSize":  0,
+                    "DEVPKEY_PciDevice_MaxLinkSpeed":  2,
+                    "DEVPKEY_PciDevice_MaxLinkWidth":  1,
+                    "DEVPKEY_PciDevice_MaxPayloadSize":  0,
+                    "DEVPKEY_PciDevice_MaxReadRequestSize":  0,
+                    "DEVPKEY_PciDevice_ProgIf":  0,
+                    "DEVPKEY_PciDevice_SubClass":  128
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_A082&SUBSYS_72708086&REV_20\\3&11583659&0&F8",
+        "Name":  "Intel(R) LPC Controller/eSPI Controller (U Premium) - A082",
+        "Service":  "msisadrv",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_A082&SUBSYS_72708086&REV_20",
+                           "PCI\\VEN_8086&DEV_A082&SUBSYS_72708086",
+                           "PCI\\VEN_8086&DEV_A082&CC_060100",
+                           "PCI\\VEN_8086&DEV_A082&CC_0601"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  2031616,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "10.1.24.5",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 31, function 0",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_BaseClass":  6,
+                    "DEVPKEY_PciDevice_ProgIf":  0,
+                    "DEVPKEY_PciDevice_SubClass":  1
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_9A1B&SUBSYS_72708086&REV_01\\3&11583659&0&6A",
+        "Name":  "Thunderbolt(TM) Controller - 9A1B",
+        "Service":  "nhi",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_9A1B&SUBSYS_72708086&REV_01",
+                           "PCI\\VEN_8086&DEV_9A1B&SUBSYS_72708086",
+                           "PCI\\VEN_8086&DEV_9A1B&CC_0C0340",
+                           "PCI\\VEN_8086&DEV_9A1B&CC_0C03"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  851970,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "1.41.1423.0",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 13, function 2",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_BaseClass":  12,
+                    "DEVPKEY_PciDevice_ProgIf":  64,
+                    "DEVPKEY_PciDevice_SubClass":  3
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_1C5C&DEV_174A&SUBSYS_174A1C5C&REV_00\\4&391CC7C&0&0030",
+        "Name":  "Standard NVM Express Controller",
+        "Service":  "stornvme",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_1C5C&DEV_174A&SUBSYS_174A1C5C&REV_00",
+                           "PCI\\VEN_1C5C&DEV_174A&SUBSYS_174A1C5C",
+                           "PCI\\VEN_1C5C&DEV_174A&CC_010802",
+                           "PCI\\VEN_1C5C&DEV_174A&CC_0108"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  0,
+                    "DEVPKEY_Device_BusNumber":  1,
+                    "DEVPKEY_Device_DriverVersion":  "10.0.26100.8972",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 1, device 0, function 0",
+                    "DEVPKEY_Device_Parent":  "PCI\\VEN_8086&DEV_9A09&SUBSYS_72708086&REV_01\\3&11583659&0&30",
+                    "DEVPKEY_PciDevice_AERCapabilityPresent":  true,
+                    "DEVPKEY_PciDevice_BaseClass":  1,
+                    "DEVPKEY_PciDevice_CurrentLinkSpeed":  3,
+                    "DEVPKEY_PciDevice_CurrentLinkWidth":  4,
+                    "DEVPKEY_PciDevice_CurrentPayloadSize":  1,
+                    "DEVPKEY_PciDevice_MaxLinkSpeed":  3,
+                    "DEVPKEY_PciDevice_MaxLinkWidth":  4,
+                    "DEVPKEY_PciDevice_MaxPayloadSize":  2,
+                    "DEVPKEY_PciDevice_MaxReadRequestSize":  2,
+                    "DEVPKEY_PciDevice_ProgIf":  2,
+                    "DEVPKEY_PciDevice_SubClass":  8
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_9A49&SUBSYS_00451414&REV_01\\3&11583659&0&10",
+        "Name":  "Intel(R) Iris(R) Xe Graphics",
+        "Service":  "igfxn",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_9A49&SUBSYS_00451414&REV_01",
+                           "PCI\\VEN_8086&DEV_9A49&SUBSYS_00451414",
+                           "PCI\\VEN_8086&DEV_9A49&CC_030000",
+                           "PCI\\VEN_8086&DEV_9A49&CC_0300"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  131072,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "32.0.101.7088",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 2, function 0",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_AERCapabilityPresent":  false,
+                    "DEVPKEY_PciDevice_BaseClass":  3,
+                    "DEVPKEY_PciDevice_CurrentPayloadSize":  0,
+                    "DEVPKEY_PciDevice_MaxPayloadSize":  0,
+                    "DEVPKEY_PciDevice_MaxReadRequestSize":  0,
+                    "DEVPKEY_PciDevice_ProgIf":  0,
+                    "DEVPKEY_PciDevice_SubClass":  0
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_A0E0&SUBSYS_72708086&REV_20\\3&11583659&0&B0",
+        "Name":  "Intel(R) Management Engine Interface #1",
+        "Service":  "MEIx64",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_A0E0&SUBSYS_72708086&REV_20",
+                           "PCI\\VEN_8086&DEV_A0E0&SUBSYS_72708086",
+                           "PCI\\VEN_8086&DEV_A0E0&CC_078000",
+                           "PCI\\VEN_8086&DEV_A0E0&CC_0780"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  1441792,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "2540.8.7.0",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 22, function 0",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_BaseClass":  7,
+                    "DEVPKEY_PciDevice_ProgIf":  0,
+                    "DEVPKEY_PciDevice_SubClass":  128
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_A0E8&SUBSYS_72708086&REV_20\\3&11583659&0&A8",
+        "Name":  "Intel(R) Serial IO I2C Host Controller - A0E8",
+        "Service":  "iaLPSS2_I2C_TGL",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_A0E8&SUBSYS_72708086&REV_20",
+                           "PCI\\VEN_8086&DEV_A0E8&SUBSYS_72708086",
+                           "PCI\\VEN_8086&DEV_A0E8&CC_0C8000",
+                           "PCI\\VEN_8086&DEV_A0E8&CC_0C80"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  1376256,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "30.100.2031.2",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 21, function 0",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_BaseClass":  12,
+                    "DEVPKEY_PciDevice_ProgIf":  0,
+                    "DEVPKEY_PciDevice_SubClass":  128
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_9A14&SUBSYS_72708086&REV_01\\3&11583659&0&00",
+        "Name":  "PCI standard host CPU bridge",
+        "Service":  null,
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_9A14&SUBSYS_72708086&REV_01",
+                           "PCI\\VEN_8086&DEV_9A14&SUBSYS_72708086",
+                           "PCI\\VEN_8086&DEV_9A14&CC_060000",
+                           "PCI\\VEN_8086&DEV_9A14&CC_0600"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  0,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "10.0.26100.1150",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 0, function 0",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0"
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_9A25&SUBSYS_72708086&REV_01\\3&11583659&0&39",
+        "Name":  "PCI Express Root Port",
+        "Service":  "pci",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_9A25&SUBSYS_72708086&REV_01",
+                           "PCI\\VEN_8086&DEV_9A25&SUBSYS_72708086",
+                           "PCI\\VEN_8086&DEV_9A25&CC_060400",
+                           "PCI\\VEN_8086&DEV_9A25&CC_0604"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  458753,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "10.0.26100.8972",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 7, function 1",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_AERCapabilityPresent":  false,
+                    "DEVPKEY_PciDevice_BaseClass":  6,
+                    "DEVPKEY_PciDevice_ProgIf":  0,
+                    "DEVPKEY_PciDevice_SubClass":  4
+                }
+    },
+    {
+        "PNPDeviceID":  "PCI\\VEN_8086&DEV_A0C8&SUBSYS_72708086&REV_20\\3&11583659&0&FB",
+        "Name":  "Intel® Smart Sound Technology BUS",
+        "Service":  "IntcAudioBus",
+        "Status":  "OK",
+        "ConfigManagerErrorCode":  0,
+        "HardwareID":  [
+                           "PCI\\VEN_8086&DEV_A0C8&SUBSYS_72708086&REV_20",
+                           "PCI\\VEN_8086&DEV_A0C8&SUBSYS_72708086",
+                           "PCI\\VEN_8086&DEV_A0C8&CC_040380",
+                           "PCI\\VEN_8086&DEV_A0C8&CC_0403"
+                       ],
+        "Bag":  {
+                    "DEVPKEY_Device_Address":  2031619,
+                    "DEVPKEY_Device_BusNumber":  0,
+                    "DEVPKEY_Device_DriverVersion":  "10.29.0.12108",
+                    "DEVPKEY_Device_IsPresent":  true,
+                    "DEVPKEY_Device_LocationInfo":  "PCI bus 0, device 31, function 3",
+                    "DEVPKEY_Device_Parent":  "ACPI\\PNP0A08\\0",
+                    "DEVPKEY_PciDevice_BaseClass":  4,
+                    "DEVPKEY_PciDevice_ProgIf":  128,
+                    "DEVPKEY_PciDevice_SubClass":  3
+                }
+    }
+]

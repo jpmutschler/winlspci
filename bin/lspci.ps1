@@ -398,13 +398,20 @@ if ($opt.Csv) {
 }
 
 if ($opt.Json) {
+    # schemaVersion is a promise: additive changes keep it, a rename or a
+    # change of meaning in an existing field bumps it. Scripts should check
+    # it. (SubsystemId changed meaning once, in 0.4.0, before this existed.)
     [pscustomobject]@{
-        source  = 'windows-pnp'
-        note    = ('Windows PnP/PCI enumeration. No configuration-space access: ' +
-                   'no hex dumps, no capability walks, no ASPM or AER detail.')
-        filter  = @{ device = $opt.Device; slot = $opt.Slot; downtrained = [bool]$opt.Downtrained }
-        count   = $devices.Count
-        devices = $devices
+        schemaVersion   = 1
+        winlspciVersion = "$((Get-Module winlspci).Version)"
+        generatedAt     = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
+        computerName    = $env:COMPUTERNAME
+        source          = 'windows-pnp'
+        note            = ('Windows PnP/PCI enumeration. No configuration-space access: ' +
+                           'no hex dumps, no capability walks, no ASPM or AER detail.')
+        filter          = @{ device = $opt.Device; slot = $opt.Slot; downtrained = [bool]$opt.Downtrained }
+        count           = $devices.Count
+        devices         = $devices
     } | ConvertTo-Json -Depth 6
     exit $exitCode
 }

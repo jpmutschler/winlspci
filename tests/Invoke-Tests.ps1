@@ -18,7 +18,12 @@
   powershell -ExecutionPolicy Bypass -File tests\Invoke-Tests.ps1
 #>
 [CmdletBinding()]
-param([switch]$Quiet)
+param(
+    [switch]$Quiet,
+    # Rewrite the fixtures' golden outputs from the current code. Deliberate
+    # only: review the diff before committing.
+    [switch]$UpdateGolden
+)
 
 $ErrorActionPreference = 'Stop'
 $script:Pass = 0
@@ -185,6 +190,116 @@ It 'Update-PciIds -WhatIf does not touch the database' {
     Assert-Equal $before (Get-Item $ids).LastWriteTimeUtc 'pci.ids was modified by -WhatIf'
 }
 
+# ------------------------------------------------------------ fixtures
+
+Write-Host "`nRecorded fixtures"
+
+$module = Get-Module winlspci
+$fixtureDir = Join-Path $PSScriptRoot 'fixtures'
+
+function Use-Fixture {
+    # Run a body with a recorded fixture standing in for the machine, and
+    # always clear it afterwards so the live tests below see the real box.
+    param([string]$Name, [scriptblock]$Body)
+    & $module { param($p) Set-PciFixture -Path $p } (Join-Path $fixtureDir "$Name.json")
+    try { & $Body } finally { & $module { Set-PciFixture -Clear } }
+}
+
+function Get-FixtureGolden {
+    # A name-free rendering of a device set: pci.ids names are excluded so a
+    # database refresh does not churn every golden.
+    param([object[]]$Devs)
+    $lines = @('# lspci -n -v')
+    $lines += @($Devs | Sort-Object Slot | Format-Lspci -Numeric 1 -Verbosity 1)
+    $lines += '# lspci -t -n'
+    $lines += @(Format-PciTree -Devices $Devs -Numeric 1)
+    $lines += '# attributes (names excluded)'
+    $lines += @($Devs | Sort-Object Slot | ConvertTo-PciAttributeRecord |
+        Where-Object { $_.Attribute -notlike '*Name' } |
+        ForEach-Object { "$($_.Slot) $($_.Attribute)=$($_.Value) present=$($_.Present)" })
+    return $lines
+}
+
+function Assert-Golden {
+    param([string]$Name, [string[]]$Actual)
+    $path = Join-Path $fixtureDir "$Name.golden.txt"
+    if ($UpdateGolden) {
+        [IO.File]::WriteAllLines($path, $Actual, (New-Object System.Text.UTF8Encoding($false)))
+        Write-Host "        (golden rewritten: $Name)" -ForegroundColor DarkYellow
+        return
+    }
+    if (-not (Test-Path $path)) { throw "no golden at $path -- run with -UpdateGolden once and review it" }
+    $expected = [IO.File]::ReadAllLines($path)
+    $n = [Math]::Max($expected.Count, $Actual.Count)
+    for ($i = 0; $i -lt $n; $i++) {
+        $e = if ($i -lt $expected.Count) { $expected[$i] } else { '<end>' }
+        $a = if ($i -lt $Actual.Count) { $Actual[$i] } else { '<end>' }
+        if ($e -ne $a) { throw "golden '$Name' differs at line $($i + 1):`n          expected: $e`n          actual:   $a" }
+    }
+}
+
+$fixtureNames = @(Get-ChildItem $fixtureDir -Filter '*.json' | ForEach-Object { $_.BaseName })
+
+It 'every fixture loads, enumerates, and matches its golden output' {
+    Assert-True ($fixtureNames.Count -ge 4) "expected the committed fixtures, found $($fixtureNames.Count)"
+    foreach ($name in $fixtureNames) {
+        Use-Fixture $name {
+            $devs = @(Get-PciDevice -IncludeAbsent)
+            Assert-True ($devs.Count -gt 0) "fixture $name enumerated nothing"
+            Assert-Golden $name (Get-FixtureGolden $devs)
+        }
+    }
+}
+
+It 'azure-sriov: packed bus numbers become domain-qualified slots' {
+    Use-Fixture 'azure-sriov' {
+        $devs = @(Get-PciDevice | Sort-Object Slot)
+        Assert-Equal '3851:00:00.0 556f:00:02.0 7870:00:00.0' (($devs | ForEach-Object Slot) -join ' ')
+        Assert-Equal 0x556f ($devs | Where-Object Slot -like '556f:*').Domain
+        Assert-Equal 2 @(Get-PciDevice -Slot '00:00.0').Count 'no domain given: every domain'
+        Assert-Equal 1 @(Get-PciDevice -Slot '7870:00:00.0').Count
+        Assert-Equal 0 @(Get-PciDevice -Slot '0000:00:00.0').Count
+    }
+}
+
+It 'de-DE-location: a localised LocationInfo still yields the right slot' {
+    # The fixture deliberately carries NO BusNumber/Address, so the string is
+    # the only source: an English-keyed regex would render both as ??:??.?.
+    Use-Fixture 'de-DE-location' {
+        Assert-Equal '00:1c.0 01:00.0' ((@(Get-PciDevice | Sort-Object Slot) | ForEach-Object Slot) -join ' ')
+    }
+    $loc = & $module { ConvertTo-Bdf 'PCI-Bus 1, Gerät 0, Funktion 0' $null $null }
+    Assert-Equal '01:00.0' $loc.Slot
+}
+
+It 'phantom: absent devices are excluded by default and marked when included' {
+    Use-Fixture 'phantom' {
+        Assert-Equal 1 @(Get-PciDevice).Count 'phantoms must not be listed by default'
+        $all = @(Get-PciDevice -IncludeAbsent | Sort-Object Slot)
+        Assert-Equal 3 $all.Count
+        Assert-Equal $true  ($all | Where-Object Slot -eq '00:1c.0').Present
+        Assert-Equal $false ($all | Where-Object Slot -eq '01:00.0').Present 'IsPresent=false must win'
+        Assert-Equal $false ($all | Where-Object Slot -eq '02:00.0').Present 'no IsPresent: Status Unknown is the fallback'
+        Assert-Equal 3 @(Format-PciTree -Devices $all -Numeric 1).Count 'phantoms still render in the tree'
+    }
+}
+
+It 'tigerlake-laptop: the recorded machine replays with link state intact' {
+    Use-Fixture 'tigerlake-laptop' {
+        $devs = @(Get-PciDevice)
+        Assert-Equal 24 $devs.Count
+        $nvme = $devs | Where-Object Slot -eq '01:00.0'
+        Assert-Equal '8GT/s' $nvme.LinkSpeed
+        Assert-Equal 4 $nvme.LinkWidth
+        Assert-Equal '0600' ($devs | Where-Object Slot -eq '00:00.0').ClassCode 'host bridge class via hardware id'
+    }
+}
+
+It 'a fixture never leaks into the live enumeration' {
+    Use-Fixture 'phantom' { $null = Get-PciDevice }
+    Assert-True (@(Get-PciDevice).Count -ne 1 -or (Get-PciDevice).Slot -ne '00:1c.0') 'fixture still active after Use-Fixture'
+}
+
 # ------------------------------------------------------------ enumeration
 
 Write-Host "`nEnumeration"
@@ -231,6 +346,11 @@ It 'decodes a Hyper-V bus number with the segment in its upper bits' {
     $plain = & (Get-Module winlspci) { ConvertTo-Bdf 'PCI bus 1, device 0, function 0' $null $null }
     Assert-Equal '01:00.0' $plain.Slot 'domain 0 is not shown'
     Assert-Equal 0 $plain.Domain
+    # Out-of-range device/function is not a PCI address; fall back, never render 01:63.9.
+    $bad = & (Get-Module winlspci) { ConvertTo-Bdf 'PCI bus 1, device 99, function 9' 1 0 }
+    Assert-Equal '01:00.0' $bad.Slot 'fell back to BusNumber/Address'
+    $unicode = & (Get-Module winlspci) { ConvertTo-Bdf ('PCI bus ' + [char]0x0661 + ', device 0, function 0') $null $null }
+    Assert-Equal '??:??.?' $unicode.Slot 'non-ASCII digits must not be cast'
 }
 
 It 'an unspecified domain in -s matches every domain; a given one only itself' {
@@ -875,11 +995,19 @@ It '-s <n> on the CLI selects a device number on any bus' {
     Assert-Equal $expected $r.Output.Count "-s $devNum"
 }
 
-It 'emits valid JSON with its limits stated' {
+It 'emits valid JSON with its limits stated and a schema version' {
     $r = Invoke-Cli @('-Json')
     $obj = $r.Text | ConvertFrom-Json
     Assert-True ($obj.count -gt 0) 'JSON should report devices'
     Assert-True ($obj.note -like '*configuration-space*') 'JSON should state its limits'
+    Assert-Equal 1 $obj.schemaVersion 'schemaVersion is the compatibility promise'
+    Assert-Equal "$((Get-Module winlspci).Version)" $obj.winlspciVersion
+    Assert-True ($obj.generatedAt -match '^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$') "generatedAt '$($obj.generatedAt)'"
+    Assert-Equal $env:COMPUTERNAME $obj.computerName
+}
+
+It 'every listed device is present (phantoms need -IncludeAbsent)' {
+    foreach ($d in $devices) { Assert-True $d.Present "$($d.Slot) listed but Present=$($d.Present)" }
 }
 
 It 'an attribute query with ONE record is still a JSON array' {
@@ -930,6 +1058,9 @@ Write-Host ('-' * 60)
 $colour = 'Green'
 if ($script:Fail -gt 0) { $colour = 'Red' }
 Write-Host "$($script:Pass) passed, $($script:Fail) failed, $($script:Skip) skipped" -ForegroundColor $colour
+if ($UpdateGolden) {
+    Write-Host 'GOLDENS REWRITTEN from the current code -- this run proved nothing about them; review the diff.' -ForegroundColor DarkYellow
+}
 if ($script:Fail -gt 0) {
     Write-Host ''
     foreach ($f in $script:Failures) { Write-Host "  $f" -ForegroundColor Red }

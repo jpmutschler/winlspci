@@ -50,35 +50,19 @@ function Get-PciDevice {
     $filterDevice = $devFilter.Device
     $filterClass = $devFilter.Class
 
-    # One projected WQL query for the PCI entities, then the CIM property
-    # method per device.
-    #
-    # The projection matters more than the WHERE: SELECT * on Win32_PnPEntity
-    # costs ~1.3s on a laptop and naming only the columns this module reads
-    # halves it, because the provider materialises far less per instance. The
-    # per-device property fetch is ~30ms, so a full listing is ~1.5s rather
-    # than the ~36s the Get-PnpDevice / Get-PnpDeviceProperty pairing took.
-    #
-    # The LIKE text is exactly "PCI\\VEN[_]%": two backslashes (one level of
-    # string escaping -- LIKE does not consume a second), and [_] because a
-    # bare underscore is WQL's single-character wildcard. Get this wrong and
-    # the query returns ZERO rows silently, rendering a machine with no PCI
-    # bus; a test pins the row count against a client-side -like.
-    #
-    # $filterVendor is only ever four validated hex digits (see
-    # ConvertTo-DeviceFilter), so interpolating it into the query is safe.
-    $where = 'PNPDeviceID LIKE "PCI\\VEN[_]%"'
-    if ($filterVendor) {
-        $where = 'PNPDeviceID LIKE "PCI\\VEN[_]{0}%"' -f $filterVendor
-    }
-    $query = 'SELECT DeviceID,PNPDeviceID,Name,Service,Status,ConfigManagerErrorCode,HardwareID ' +
-             "FROM Win32_PnPEntity WHERE $where"
-    $entities = @(Get-CimInstance -Query $query -ErrorAction SilentlyContinue)
+    # One projected WQL query for the PCI entities (Get-PciEntity), then the
+    # CIM property method per device (~30ms each), so a full listing is ~1.7s
+    # rather than the ~36s the Get-PnpDevice / Get-PnpDeviceProperty pairing
+    # took. Under a test fixture both come from the recording instead.
+    $entities = @(Get-PciEntity -VendorId $filterVendor)
 
     foreach ($pnp in $entities) {
         $instanceId = $pnp.PNPDeviceID
-        if (-not $IncludeAbsent -and $pnp.Status -eq 'Unknown') { continue }
         if ($instanceId -notmatch 'VEN_([0-9A-Fa-f]{4})&DEV_([0-9A-Fa-f]{4})') { continue }
+        # Cheap pre-filter: a Status of 'Unknown' is a phantom, and it costs a
+        # CIM round trip (~35ms) to fetch a bag we would then discard. The
+        # authoritative IsPresent check below still runs for everything else.
+        if (-not $IncludeAbsent -and "$($pnp.Status)" -eq 'Unknown') { continue }
         $ven = $Matches[1].ToLower()
         $dev = $Matches[2].ToLower()
 
@@ -98,6 +82,15 @@ function Get-PciDevice {
         if ($instanceId -match 'REV_([0-9A-Fa-f]{2})') { $rev = $Matches[1].ToLower() }
 
         $bag = Get-DevicePropertyBag $pnp
+
+        # Presence: DEVPKEY_Device_IsPresent is explicit; the older
+        # Status -eq 'Unknown' heuristic is the fallback. A phantom device
+        # (unplugged card Windows still remembers) is excluded unless asked
+        # for, and its last-known values are then historical, not live.
+        $isPresent = Get-BagValue $bag 'DEVPKEY_Device_IsPresent'
+        if ($null -eq $isPresent) { $isPresent = ($pnp.Status -ne 'Unknown') }
+        $isPresent = [bool]$isPresent
+        if (-not $IncludeAbsent -and -not $isPresent) { continue }
 
         $baseClass = Get-BagValue $bag 'DEVPKEY_PciDevice_BaseClass'
         $subClass  = Get-BagValue $bag 'DEVPKEY_PciDevice_SubClass'
@@ -212,7 +205,7 @@ function Get-PciDevice {
             AerCapable       = Get-BagValue $bag 'DEVPKEY_PciDevice_AERCapabilityPresent'
             ParentInstanceId = Get-BagValue $bag 'DEVPKEY_Device_Parent'
             InstanceId       = $instanceId
-            Present          = ($pnp.Status -ne 'Unknown')
+            Present          = $isPresent
         }
     }
 }

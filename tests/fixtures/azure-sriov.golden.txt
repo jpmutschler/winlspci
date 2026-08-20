@@ -1,0 +1,102 @@
+# lspci -n -v
+3851:00:00.0 0108: 1414:b111 (rev 01)
+        LnkSta: not reported by this device
+        Driver: stornvme (10.0.26100.1)
+556f:00:02.0 0200: 15b3:1016 (rev 80)
+        LnkSta: 8GT/s x8 (max 8GT/s x8)
+        Driver: mlx5 (2.80.25134.0)
+7870:00:00.0 0200: 1414:00ba (rev 00)
+        LnkSta: not reported by this device
+        Driver: mana (10.0.26100.1)
+# lspci -t -n
+-3851:00:00.0 [1414:b111]
+-556f:00:02.0 [15b3:1016]  (8GT/s x8)
+-7870:00:00.0 [1414:00ba]
+# attributes (names excluded)
+3851:00:00.0 Slot=3851:00:00.0 present=True
+3851:00:00.0 Domain=14417 present=True
+3851:00:00.0 VendorId=1414 present=True
+3851:00:00.0 DeviceId=b111 present=True
+3851:00:00.0 SubsystemVendorId=0000 present=True
+3851:00:00.0 SubsystemId=0000 present=True
+3851:00:00.0 Revision=01 present=True
+3851:00:00.0 ClassCode=0108 present=True
+3851:00:00.0 ProgIf=2 present=True
+3851:00:00.0 Driver=stornvme present=True
+3851:00:00.0 DriverVersion=10.0.26100.1 present=True
+3851:00:00.0 Status=OK present=True
+3851:00:00.0 Problem=0 present=True
+3851:00:00.0 NumaNode= present=False
+3851:00:00.0 LinkStateReported=False present=True
+3851:00:00.0 LinkSpeed= present=False
+3851:00:00.0 LinkSpeedRaw= present=False
+3851:00:00.0 LinkWidth= present=False
+3851:00:00.0 MaxLinkSpeed= present=False
+3851:00:00.0 MaxLinkSpeedRaw= present=False
+3851:00:00.0 MaxLinkWidth= present=False
+3851:00:00.0 Downtrained=False present=True
+3851:00:00.0 MaxPayloadSize=128 present=True
+3851:00:00.0 MaxPayloadSizeSupported=128 present=True
+3851:00:00.0 MaxReadRequestSize=512 present=True
+3851:00:00.0 AerCapable=False present=True
+3851:00:00.0 ParentInstanceId=VMBUS\{44C4F61D-4444-4400-9D52-802E27EDE19F}\{3851...} present=True
+3851:00:00.0 InstanceId=PCI\VEN_1414&DEV_B111&SUBSYS_00000000&REV_01\6&3851&0&00 present=True
+3851:00:00.0 Present=True present=True
+556f:00:02.0 Slot=556f:00:02.0 present=True
+556f:00:02.0 Domain=21871 present=True
+556f:00:02.0 VendorId=15b3 present=True
+556f:00:02.0 DeviceId=1016 present=True
+556f:00:02.0 SubsystemVendorId=15b3 present=True
+556f:00:02.0 SubsystemId=0003 present=True
+556f:00:02.0 Revision=80 present=True
+556f:00:02.0 ClassCode=0200 present=True
+556f:00:02.0 ProgIf=0 present=True
+556f:00:02.0 Driver=mlx5 present=True
+556f:00:02.0 DriverVersion=2.80.25134.0 present=True
+556f:00:02.0 Status=OK present=True
+556f:00:02.0 Problem=0 present=True
+556f:00:02.0 NumaNode= present=False
+556f:00:02.0 LinkStateReported=True present=True
+556f:00:02.0 LinkSpeed=8GT/s present=True
+556f:00:02.0 LinkSpeedRaw=3 present=True
+556f:00:02.0 LinkWidth=8 present=True
+556f:00:02.0 MaxLinkSpeed=8GT/s present=True
+556f:00:02.0 MaxLinkSpeedRaw=3 present=True
+556f:00:02.0 MaxLinkWidth=8 present=True
+556f:00:02.0 Downtrained=False present=True
+556f:00:02.0 MaxPayloadSize=128 present=True
+556f:00:02.0 MaxPayloadSizeSupported=512 present=True
+556f:00:02.0 MaxReadRequestSize=512 present=True
+556f:00:02.0 AerCapable=False present=True
+556f:00:02.0 ParentInstanceId=VMBUS\{44C4F61D-4444-4400-9D52-802E27EDE19F}\{556F...} present=True
+556f:00:02.0 InstanceId=PCI\VEN_15B3&DEV_1016&SUBSYS_000315B3&REV_80\6&556F&0&0200 present=True
+556f:00:02.0 Present=True present=True
+7870:00:00.0 Slot=7870:00:00.0 present=True
+7870:00:00.0 Domain=30832 present=True
+7870:00:00.0 VendorId=1414 present=True
+7870:00:00.0 DeviceId=00ba present=True
+7870:00:00.0 SubsystemVendorId=0000 present=True
+7870:00:00.0 SubsystemId=0000 present=True
+7870:00:00.0 Revision=00 present=True
+7870:00:00.0 ClassCode=0200 present=True
+7870:00:00.0 ProgIf=0 present=True
+7870:00:00.0 Driver=mana present=True
+7870:00:00.0 DriverVersion=10.0.26100.1 present=True
+7870:00:00.0 Status=OK present=True
+7870:00:00.0 Problem=0 present=True
+7870:00:00.0 NumaNode= present=False
+7870:00:00.0 LinkStateReported=False present=True
+7870:00:00.0 LinkSpeed= present=False
+7870:00:00.0 LinkSpeedRaw= present=False
+7870:00:00.0 LinkWidth= present=False
+7870:00:00.0 MaxLinkSpeed= present=False
+7870:00:00.0 MaxLinkSpeedRaw= present=False
+7870:00:00.0 MaxLinkWidth= present=False
+7870:00:00.0 Downtrained=False present=True
+7870:00:00.0 MaxPayloadSize= present=False
+7870:00:00.0 MaxPayloadSizeSupported= present=False
+7870:00:00.0 MaxReadRequestSize= present=False
+7870:00:00.0 AerCapable=False present=True
+7870:00:00.0 ParentInstanceId=VMBUS\{44C4F61D-4444-4400-9D52-802E27EDE19F}\{7870...} present=True
+7870:00:00.0 InstanceId=PCI\VEN_1414&DEV_00BA&SUBSYS_00000000&REV_00\6&7870&0&00 present=True
+7870:00:00.0 Present=True present=True

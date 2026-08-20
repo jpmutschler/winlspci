@@ -1,0 +1,795 @@
+# lspci -n -v
+00:00.0 0600: 8086:9a14 (rev 01)
+        LnkSta: not reported by this device
+        Driver: <none> (10.0.26100.1150)
+00:02.0 0300: 8086:9a49 (rev 01)
+        LnkSta: not reported by this device
+        Driver: igfxn (32.0.101.7088)
+00:06.0 0604: 8086:9a09 (rev 01)
+        LnkSta: not reported by this device
+        Driver: pci (10.0.26100.8972)
+00:07.0 0604: 8086:9a23 (rev 01)
+        LnkSta: not reported by this device
+        Driver: pci (10.0.26100.8972)
+00:07.1 0604: 8086:9a25 (rev 01)
+        LnkSta: not reported by this device
+        Driver: pci (10.0.26100.8972)
+00:0a.0 1180: 8086:9a0d (rev 01)
+        LnkSta: not reported by this device
+        Driver: IntelPMT (10.0.26100.8972)
+00:0d.0 0c03: 8086:9a13 (rev 01)
+        LnkSta: not reported by this device
+        Driver: USBXHCI (10.0.26100.8972)
+00:0d.2 0c03: 8086:9a1b (rev 01)
+        LnkSta: not reported by this device
+        Driver: nhi (1.41.1423.0)
+00:10.0 0c80: 8086:a0d8 (rev 20)
+        LnkSta: not reported by this device
+        Driver: iaLPSS2_I2C_TGL (30.100.2031.2)
+00:10.6 0901: 8086:a0d0 (rev 20)
+        LnkSta: not reported by this device
+        Driver: IntelTHCBase (3.0.101.251)
+00:14.0 0c03: 8086:a0ed (rev 20)
+        LnkSta: not reported by this device
+        Driver: USBXHCI (10.0.26100.8972)
+00:14.2 0500: 8086:a0ef (rev 20)
+        LnkSta: not reported by this device
+        Driver: <none> (10.0.26100.1150)
+00:15.0 0c80: 8086:a0e8 (rev 20)
+        LnkSta: not reported by this device
+        Driver: iaLPSS2_I2C_TGL (30.100.2031.2)
+00:15.1 0c80: 8086:a0e9 (rev 20)
+        LnkSta: not reported by this device
+        Driver: iaLPSS2_I2C_TGL (30.100.2031.2)
+00:16.0 0780: 8086:a0e0 (rev 20)
+        LnkSta: not reported by this device
+        Driver: MEIx64 (2540.8.7.0)
+00:1c.0 0604: 8086:a0bd (rev 20)
+        LnkSta: not reported by this device
+        Driver: pci (10.1.24.5)
+00:1d.0 0604: 8086:a0b0 (rev 20)
+        LnkSta: not reported by this device
+        Driver: pci (10.1.24.5)
+00:1e.0 0780: 8086:a0a8 (rev 20)
+        LnkSta: not reported by this device
+        Driver: iaLPSS2_UART2_TGL (30.100.2031.2)
+00:1f.0 0601: 8086:a082 (rev 20)
+        LnkSta: not reported by this device
+        Driver: msisadrv (10.1.24.5)
+00:1f.3 0403: 8086:a0c8 (rev 20)
+        LnkSta: not reported by this device
+        Driver: IntcAudioBus (10.29.0.12108)
+00:1f.5 0c80: 8086:a0a4 (rev 20)
+        LnkSta: not reported by this device
+        Driver: <none> (10.1.24.5)
+01:00.0 0108: 1c5c:174a (rev 00)
+        LnkSta: 8GT/s x4 (max 8GT/s x4)
+        Driver: stornvme (10.0.26100.8972)
+f2:00.0 0280: 8086:2723 (rev 1a)
+        LnkSta: 5GT/s x1 (max 5GT/s x1)
+        Driver: Netwtw10 (24.20.2.1)
+f3:00.0 0302: 10de:25a0 (rev a1)
+        LnkSta: 8GT/s x4 (max 16GT/s x16)  <-- DOWNTRAINED (speed)  <-- DOWNTRAINED (width)
+        Driver: nvlddmkm (32.0.16.1088)
+# lspci -t -n
+-00:00.0 [8086:9a14]
+-00:02.0 [8086:9a49]
+-00:06.0 [8086:9a09]
+ \-01:00.0 [1c5c:174a]  (8GT/s x4)
+-00:07.0 [8086:9a23]
+-00:07.1 [8086:9a25]
+-00:0a.0 [8086:9a0d]
+-00:0d.0 [8086:9a13]
+-00:0d.2 [8086:9a1b]
+-00:10.0 [8086:a0d8]
+-00:10.6 [8086:a0d0]
+-00:14.0 [8086:a0ed]
+-00:14.2 [8086:a0ef]
+-00:15.0 [8086:a0e8]
+-00:15.1 [8086:a0e9]
+-00:16.0 [8086:a0e0]
+-00:1c.0 [8086:a0bd]
+ \-f2:00.0 [8086:2723]  (5GT/s x1)
+-00:1d.0 [8086:a0b0]
+ \-f3:00.0 [10de:25a0]  (8GT/s x4)
+-00:1e.0 [8086:a0a8]
+-00:1f.0 [8086:a082]
+-00:1f.3 [8086:a0c8]
+-00:1f.5 [8086:a0a4]
+# attributes (names excluded)
+00:00.0 Slot=00:00.0 present=True
+00:00.0 Domain=0 present=True
+00:00.0 VendorId=8086 present=True
+00:00.0 DeviceId=9a14 present=True
+00:00.0 SubsystemVendorId=8086 present=True
+00:00.0 SubsystemId=7270 present=True
+00:00.0 Revision=01 present=True
+00:00.0 ClassCode=0600 present=True
+00:00.0 ProgIf=0 present=True
+00:00.0 Driver= present=False
+00:00.0 DriverVersion=10.0.26100.1150 present=True
+00:00.0 Status=OK present=True
+00:00.0 Problem=0 present=True
+00:00.0 NumaNode= present=False
+00:00.0 LinkStateReported=False present=True
+00:00.0 LinkSpeed= present=False
+00:00.0 LinkSpeedRaw= present=False
+00:00.0 LinkWidth= present=False
+00:00.0 MaxLinkSpeed= present=False
+00:00.0 MaxLinkSpeedRaw= present=False
+00:00.0 MaxLinkWidth= present=False
+00:00.0 Downtrained=False present=True
+00:00.0 MaxPayloadSize= present=False
+00:00.0 MaxPayloadSizeSupported= present=False
+00:00.0 MaxReadRequestSize= present=False
+00:00.0 AerCapable= present=False
+00:00.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:00.0 InstanceId=PCI\VEN_8086&DEV_9A14&SUBSYS_72708086&REV_01\3&11583659&0&00 present=True
+00:00.0 Present=True present=True
+00:02.0 Slot=00:02.0 present=True
+00:02.0 Domain=0 present=True
+00:02.0 VendorId=8086 present=True
+00:02.0 DeviceId=9a49 present=True
+00:02.0 SubsystemVendorId=1414 present=True
+00:02.0 SubsystemId=0045 present=True
+00:02.0 Revision=01 present=True
+00:02.0 ClassCode=0300 present=True
+00:02.0 ProgIf=0 present=True
+00:02.0 Driver=igfxn present=True
+00:02.0 DriverVersion=32.0.101.7088 present=True
+00:02.0 Status=OK present=True
+00:02.0 Problem=0 present=True
+00:02.0 NumaNode= present=False
+00:02.0 LinkStateReported=False present=True
+00:02.0 LinkSpeed= present=False
+00:02.0 LinkSpeedRaw= present=False
+00:02.0 LinkWidth= present=False
+00:02.0 MaxLinkSpeed= present=False
+00:02.0 MaxLinkSpeedRaw= present=False
+00:02.0 MaxLinkWidth= present=False
+00:02.0 Downtrained=False present=True
+00:02.0 MaxPayloadSize=128 present=True
+00:02.0 MaxPayloadSizeSupported=128 present=True
+00:02.0 MaxReadRequestSize=128 present=True
+00:02.0 AerCapable=False present=True
+00:02.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:02.0 InstanceId=PCI\VEN_8086&DEV_9A49&SUBSYS_00451414&REV_01\3&11583659&0&10 present=True
+00:02.0 Present=True present=True
+00:06.0 Slot=00:06.0 present=True
+00:06.0 Domain=0 present=True
+00:06.0 VendorId=8086 present=True
+00:06.0 DeviceId=9a09 present=True
+00:06.0 SubsystemVendorId=8086 present=True
+00:06.0 SubsystemId=7270 present=True
+00:06.0 Revision=01 present=True
+00:06.0 ClassCode=0604 present=True
+00:06.0 ProgIf=0 present=True
+00:06.0 Driver=pci present=True
+00:06.0 DriverVersion=10.0.26100.8972 present=True
+00:06.0 Status=OK present=True
+00:06.0 Problem=0 present=True
+00:06.0 NumaNode= present=False
+00:06.0 LinkStateReported=False present=True
+00:06.0 LinkSpeed= present=False
+00:06.0 LinkSpeedRaw= present=False
+00:06.0 LinkWidth= present=False
+00:06.0 MaxLinkSpeed= present=False
+00:06.0 MaxLinkSpeedRaw= present=False
+00:06.0 MaxLinkWidth= present=False
+00:06.0 Downtrained=False present=True
+00:06.0 MaxPayloadSize= present=False
+00:06.0 MaxPayloadSizeSupported= present=False
+00:06.0 MaxReadRequestSize= present=False
+00:06.0 AerCapable=True present=True
+00:06.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:06.0 InstanceId=PCI\VEN_8086&DEV_9A09&SUBSYS_72708086&REV_01\3&11583659&0&30 present=True
+00:06.0 Present=True present=True
+00:07.0 Slot=00:07.0 present=True
+00:07.0 Domain=0 present=True
+00:07.0 VendorId=8086 present=True
+00:07.0 DeviceId=9a23 present=True
+00:07.0 SubsystemVendorId=8086 present=True
+00:07.0 SubsystemId=7270 present=True
+00:07.0 Revision=01 present=True
+00:07.0 ClassCode=0604 present=True
+00:07.0 ProgIf=0 present=True
+00:07.0 Driver=pci present=True
+00:07.0 DriverVersion=10.0.26100.8972 present=True
+00:07.0 Status=OK present=True
+00:07.0 Problem=0 present=True
+00:07.0 NumaNode= present=False
+00:07.0 LinkStateReported=False present=True
+00:07.0 LinkSpeed= present=False
+00:07.0 LinkSpeedRaw= present=False
+00:07.0 LinkWidth= present=False
+00:07.0 MaxLinkSpeed= present=False
+00:07.0 MaxLinkSpeedRaw= present=False
+00:07.0 MaxLinkWidth= present=False
+00:07.0 Downtrained=False present=True
+00:07.0 MaxPayloadSize= present=False
+00:07.0 MaxPayloadSizeSupported= present=False
+00:07.0 MaxReadRequestSize= present=False
+00:07.0 AerCapable=False present=True
+00:07.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:07.0 InstanceId=PCI\VEN_8086&DEV_9A23&SUBSYS_72708086&REV_01\3&11583659&0&38 present=True
+00:07.0 Present=True present=True
+00:07.1 Slot=00:07.1 present=True
+00:07.1 Domain=0 present=True
+00:07.1 VendorId=8086 present=True
+00:07.1 DeviceId=9a25 present=True
+00:07.1 SubsystemVendorId=8086 present=True
+00:07.1 SubsystemId=7270 present=True
+00:07.1 Revision=01 present=True
+00:07.1 ClassCode=0604 present=True
+00:07.1 ProgIf=0 present=True
+00:07.1 Driver=pci present=True
+00:07.1 DriverVersion=10.0.26100.8972 present=True
+00:07.1 Status=OK present=True
+00:07.1 Problem=0 present=True
+00:07.1 NumaNode= present=False
+00:07.1 LinkStateReported=False present=True
+00:07.1 LinkSpeed= present=False
+00:07.1 LinkSpeedRaw= present=False
+00:07.1 LinkWidth= present=False
+00:07.1 MaxLinkSpeed= present=False
+00:07.1 MaxLinkSpeedRaw= present=False
+00:07.1 MaxLinkWidth= present=False
+00:07.1 Downtrained=False present=True
+00:07.1 MaxPayloadSize= present=False
+00:07.1 MaxPayloadSizeSupported= present=False
+00:07.1 MaxReadRequestSize= present=False
+00:07.1 AerCapable=False present=True
+00:07.1 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:07.1 InstanceId=PCI\VEN_8086&DEV_9A25&SUBSYS_72708086&REV_01\3&11583659&0&39 present=True
+00:07.1 Present=True present=True
+00:0a.0 Slot=00:0a.0 present=True
+00:0a.0 Domain=0 present=True
+00:0a.0 VendorId=8086 present=True
+00:0a.0 DeviceId=9a0d present=True
+00:0a.0 SubsystemVendorId=8086 present=True
+00:0a.0 SubsystemId=7270 present=True
+00:0a.0 Revision=01 present=True
+00:0a.0 ClassCode=1180 present=True
+00:0a.0 ProgIf=0 present=True
+00:0a.0 Driver=IntelPMT present=True
+00:0a.0 DriverVersion=10.0.26100.8972 present=True
+00:0a.0 Status=OK present=True
+00:0a.0 Problem=0 present=True
+00:0a.0 NumaNode= present=False
+00:0a.0 LinkStateReported=False present=True
+00:0a.0 LinkSpeed= present=False
+00:0a.0 LinkSpeedRaw= present=False
+00:0a.0 LinkWidth= present=False
+00:0a.0 MaxLinkSpeed= present=False
+00:0a.0 MaxLinkSpeedRaw= present=False
+00:0a.0 MaxLinkWidth= present=False
+00:0a.0 Downtrained=False present=True
+00:0a.0 MaxPayloadSize=128 present=True
+00:0a.0 MaxPayloadSizeSupported=128 present=True
+00:0a.0 MaxReadRequestSize=128 present=True
+00:0a.0 AerCapable=False present=True
+00:0a.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:0a.0 InstanceId=PCI\VEN_8086&DEV_9A0D&SUBSYS_72708086&REV_01\3&11583659&0&50 present=True
+00:0a.0 Present=True present=True
+00:0d.0 Slot=00:0d.0 present=True
+00:0d.0 Domain=0 present=True
+00:0d.0 VendorId=8086 present=True
+00:0d.0 DeviceId=9a13 present=True
+00:0d.0 SubsystemVendorId=8086 present=True
+00:0d.0 SubsystemId=7270 present=True
+00:0d.0 Revision=01 present=True
+00:0d.0 ClassCode=0c03 present=True
+00:0d.0 ProgIf=48 present=True
+00:0d.0 Driver=USBXHCI present=True
+00:0d.0 DriverVersion=10.0.26100.8972 present=True
+00:0d.0 Status=OK present=True
+00:0d.0 Problem=0 present=True
+00:0d.0 NumaNode= present=False
+00:0d.0 LinkStateReported=False present=True
+00:0d.0 LinkSpeed= present=False
+00:0d.0 LinkSpeedRaw= present=False
+00:0d.0 LinkWidth= present=False
+00:0d.0 MaxLinkSpeed= present=False
+00:0d.0 MaxLinkSpeedRaw= present=False
+00:0d.0 MaxLinkWidth= present=False
+00:0d.0 Downtrained=False present=True
+00:0d.0 MaxPayloadSize= present=False
+00:0d.0 MaxPayloadSizeSupported= present=False
+00:0d.0 MaxReadRequestSize= present=False
+00:0d.0 AerCapable= present=False
+00:0d.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:0d.0 InstanceId=PCI\VEN_8086&DEV_9A13&SUBSYS_72708086&REV_01\3&11583659&0&68 present=True
+00:0d.0 Present=True present=True
+00:0d.2 Slot=00:0d.2 present=True
+00:0d.2 Domain=0 present=True
+00:0d.2 VendorId=8086 present=True
+00:0d.2 DeviceId=9a1b present=True
+00:0d.2 SubsystemVendorId=8086 present=True
+00:0d.2 SubsystemId=7270 present=True
+00:0d.2 Revision=01 present=True
+00:0d.2 ClassCode=0c03 present=True
+00:0d.2 ProgIf=64 present=True
+00:0d.2 Driver=nhi present=True
+00:0d.2 DriverVersion=1.41.1423.0 present=True
+00:0d.2 Status=OK present=True
+00:0d.2 Problem=0 present=True
+00:0d.2 NumaNode= present=False
+00:0d.2 LinkStateReported=False present=True
+00:0d.2 LinkSpeed= present=False
+00:0d.2 LinkSpeedRaw= present=False
+00:0d.2 LinkWidth= present=False
+00:0d.2 MaxLinkSpeed= present=False
+00:0d.2 MaxLinkSpeedRaw= present=False
+00:0d.2 MaxLinkWidth= present=False
+00:0d.2 Downtrained=False present=True
+00:0d.2 MaxPayloadSize= present=False
+00:0d.2 MaxPayloadSizeSupported= present=False
+00:0d.2 MaxReadRequestSize= present=False
+00:0d.2 AerCapable= present=False
+00:0d.2 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:0d.2 InstanceId=PCI\VEN_8086&DEV_9A1B&SUBSYS_72708086&REV_01\3&11583659&0&6A present=True
+00:0d.2 Present=True present=True
+00:10.0 Slot=00:10.0 present=True
+00:10.0 Domain=0 present=True
+00:10.0 VendorId=8086 present=True
+00:10.0 DeviceId=a0d8 present=True
+00:10.0 SubsystemVendorId=8086 present=True
+00:10.0 SubsystemId=7270 present=True
+00:10.0 Revision=20 present=True
+00:10.0 ClassCode=0c80 present=True
+00:10.0 ProgIf=0 present=True
+00:10.0 Driver=iaLPSS2_I2C_TGL present=True
+00:10.0 DriverVersion=30.100.2031.2 present=True
+00:10.0 Status=OK present=True
+00:10.0 Problem=0 present=True
+00:10.0 NumaNode= present=False
+00:10.0 LinkStateReported=False present=True
+00:10.0 LinkSpeed= present=False
+00:10.0 LinkSpeedRaw= present=False
+00:10.0 LinkWidth= present=False
+00:10.0 MaxLinkSpeed= present=False
+00:10.0 MaxLinkSpeedRaw= present=False
+00:10.0 MaxLinkWidth= present=False
+00:10.0 Downtrained=False present=True
+00:10.0 MaxPayloadSize= present=False
+00:10.0 MaxPayloadSizeSupported= present=False
+00:10.0 MaxReadRequestSize= present=False
+00:10.0 AerCapable= present=False
+00:10.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:10.0 InstanceId=PCI\VEN_8086&DEV_A0D8&SUBSYS_72708086&REV_20\3&11583659&0&80 present=True
+00:10.0 Present=True present=True
+00:10.6 Slot=00:10.6 present=True
+00:10.6 Domain=0 present=True
+00:10.6 VendorId=8086 present=True
+00:10.6 DeviceId=a0d0 present=True
+00:10.6 SubsystemVendorId=1414 present=True
+00:10.6 SubsystemId=0049 present=True
+00:10.6 Revision=20 present=True
+00:10.6 ClassCode=0901 present=True
+00:10.6 ProgIf=0 present=True
+00:10.6 Driver=IntelTHCBase present=True
+00:10.6 DriverVersion=3.0.101.251 present=True
+00:10.6 Status=OK present=True
+00:10.6 Problem=0 present=True
+00:10.6 NumaNode= present=False
+00:10.6 LinkStateReported=False present=True
+00:10.6 LinkSpeed= present=False
+00:10.6 LinkSpeedRaw= present=False
+00:10.6 LinkWidth= present=False
+00:10.6 MaxLinkSpeed= present=False
+00:10.6 MaxLinkSpeedRaw= present=False
+00:10.6 MaxLinkWidth= present=False
+00:10.6 Downtrained=False present=True
+00:10.6 MaxPayloadSize= present=False
+00:10.6 MaxPayloadSizeSupported= present=False
+00:10.6 MaxReadRequestSize= present=False
+00:10.6 AerCapable= present=False
+00:10.6 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:10.6 InstanceId=PCI\VEN_8086&DEV_A0D0&SUBSYS_00491414&REV_20\3&11583659&0&86 present=True
+00:10.6 Present=True present=True
+00:14.0 Slot=00:14.0 present=True
+00:14.0 Domain=0 present=True
+00:14.0 VendorId=8086 present=True
+00:14.0 DeviceId=a0ed present=True
+00:14.0 SubsystemVendorId=8086 present=True
+00:14.0 SubsystemId=7270 present=True
+00:14.0 Revision=20 present=True
+00:14.0 ClassCode=0c03 present=True
+00:14.0 ProgIf=48 present=True
+00:14.0 Driver=USBXHCI present=True
+00:14.0 DriverVersion=10.0.26100.8972 present=True
+00:14.0 Status=OK present=True
+00:14.0 Problem=0 present=True
+00:14.0 NumaNode= present=False
+00:14.0 LinkStateReported=False present=True
+00:14.0 LinkSpeed= present=False
+00:14.0 LinkSpeedRaw= present=False
+00:14.0 LinkWidth= present=False
+00:14.0 MaxLinkSpeed= present=False
+00:14.0 MaxLinkSpeedRaw= present=False
+00:14.0 MaxLinkWidth= present=False
+00:14.0 Downtrained=False present=True
+00:14.0 MaxPayloadSize= present=False
+00:14.0 MaxPayloadSizeSupported= present=False
+00:14.0 MaxReadRequestSize= present=False
+00:14.0 AerCapable= present=False
+00:14.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:14.0 InstanceId=PCI\VEN_8086&DEV_A0ED&SUBSYS_72708086&REV_20\3&11583659&0&A0 present=True
+00:14.0 Present=True present=True
+00:14.2 Slot=00:14.2 present=True
+00:14.2 Domain=0 present=True
+00:14.2 VendorId=8086 present=True
+00:14.2 DeviceId=a0ef present=True
+00:14.2 SubsystemVendorId=8086 present=True
+00:14.2 SubsystemId=7270 present=True
+00:14.2 Revision=20 present=True
+00:14.2 ClassCode=0500 present=True
+00:14.2 ProgIf=0 present=True
+00:14.2 Driver= present=False
+00:14.2 DriverVersion=10.0.26100.1150 present=True
+00:14.2 Status=OK present=True
+00:14.2 Problem=0 present=True
+00:14.2 NumaNode= present=False
+00:14.2 LinkStateReported=False present=True
+00:14.2 LinkSpeed= present=False
+00:14.2 LinkSpeedRaw= present=False
+00:14.2 LinkWidth= present=False
+00:14.2 MaxLinkSpeed= present=False
+00:14.2 MaxLinkSpeedRaw= present=False
+00:14.2 MaxLinkWidth= present=False
+00:14.2 Downtrained=False present=True
+00:14.2 MaxPayloadSize= present=False
+00:14.2 MaxPayloadSizeSupported= present=False
+00:14.2 MaxReadRequestSize= present=False
+00:14.2 AerCapable= present=False
+00:14.2 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:14.2 InstanceId=PCI\VEN_8086&DEV_A0EF&SUBSYS_72708086&REV_20\3&11583659&0&A2 present=True
+00:14.2 Present=True present=True
+00:15.0 Slot=00:15.0 present=True
+00:15.0 Domain=0 present=True
+00:15.0 VendorId=8086 present=True
+00:15.0 DeviceId=a0e8 present=True
+00:15.0 SubsystemVendorId=8086 present=True
+00:15.0 SubsystemId=7270 present=True
+00:15.0 Revision=20 present=True
+00:15.0 ClassCode=0c80 present=True
+00:15.0 ProgIf=0 present=True
+00:15.0 Driver=iaLPSS2_I2C_TGL present=True
+00:15.0 DriverVersion=30.100.2031.2 present=True
+00:15.0 Status=OK present=True
+00:15.0 Problem=0 present=True
+00:15.0 NumaNode= present=False
+00:15.0 LinkStateReported=False present=True
+00:15.0 LinkSpeed= present=False
+00:15.0 LinkSpeedRaw= present=False
+00:15.0 LinkWidth= present=False
+00:15.0 MaxLinkSpeed= present=False
+00:15.0 MaxLinkSpeedRaw= present=False
+00:15.0 MaxLinkWidth= present=False
+00:15.0 Downtrained=False present=True
+00:15.0 MaxPayloadSize= present=False
+00:15.0 MaxPayloadSizeSupported= present=False
+00:15.0 MaxReadRequestSize= present=False
+00:15.0 AerCapable= present=False
+00:15.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:15.0 InstanceId=PCI\VEN_8086&DEV_A0E8&SUBSYS_72708086&REV_20\3&11583659&0&A8 present=True
+00:15.0 Present=True present=True
+00:15.1 Slot=00:15.1 present=True
+00:15.1 Domain=0 present=True
+00:15.1 VendorId=8086 present=True
+00:15.1 DeviceId=a0e9 present=True
+00:15.1 SubsystemVendorId=8086 present=True
+00:15.1 SubsystemId=7270 present=True
+00:15.1 Revision=20 present=True
+00:15.1 ClassCode=0c80 present=True
+00:15.1 ProgIf=0 present=True
+00:15.1 Driver=iaLPSS2_I2C_TGL present=True
+00:15.1 DriverVersion=30.100.2031.2 present=True
+00:15.1 Status=OK present=True
+00:15.1 Problem=0 present=True
+00:15.1 NumaNode= present=False
+00:15.1 LinkStateReported=False present=True
+00:15.1 LinkSpeed= present=False
+00:15.1 LinkSpeedRaw= present=False
+00:15.1 LinkWidth= present=False
+00:15.1 MaxLinkSpeed= present=False
+00:15.1 MaxLinkSpeedRaw= present=False
+00:15.1 MaxLinkWidth= present=False
+00:15.1 Downtrained=False present=True
+00:15.1 MaxPayloadSize= present=False
+00:15.1 MaxPayloadSizeSupported= present=False
+00:15.1 MaxReadRequestSize= present=False
+00:15.1 AerCapable= present=False
+00:15.1 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:15.1 InstanceId=PCI\VEN_8086&DEV_A0E9&SUBSYS_72708086&REV_20\3&11583659&0&A9 present=True
+00:15.1 Present=True present=True
+00:16.0 Slot=00:16.0 present=True
+00:16.0 Domain=0 present=True
+00:16.0 VendorId=8086 present=True
+00:16.0 DeviceId=a0e0 present=True
+00:16.0 SubsystemVendorId=8086 present=True
+00:16.0 SubsystemId=7270 present=True
+00:16.0 Revision=20 present=True
+00:16.0 ClassCode=0780 present=True
+00:16.0 ProgIf=0 present=True
+00:16.0 Driver=MEIx64 present=True
+00:16.0 DriverVersion=2540.8.7.0 present=True
+00:16.0 Status=OK present=True
+00:16.0 Problem=0 present=True
+00:16.0 NumaNode= present=False
+00:16.0 LinkStateReported=False present=True
+00:16.0 LinkSpeed= present=False
+00:16.0 LinkSpeedRaw= present=False
+00:16.0 LinkWidth= present=False
+00:16.0 MaxLinkSpeed= present=False
+00:16.0 MaxLinkSpeedRaw= present=False
+00:16.0 MaxLinkWidth= present=False
+00:16.0 Downtrained=False present=True
+00:16.0 MaxPayloadSize= present=False
+00:16.0 MaxPayloadSizeSupported= present=False
+00:16.0 MaxReadRequestSize= present=False
+00:16.0 AerCapable= present=False
+00:16.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:16.0 InstanceId=PCI\VEN_8086&DEV_A0E0&SUBSYS_72708086&REV_20\3&11583659&0&B0 present=True
+00:16.0 Present=True present=True
+00:1c.0 Slot=00:1c.0 present=True
+00:1c.0 Domain=0 present=True
+00:1c.0 VendorId=8086 present=True
+00:1c.0 DeviceId=a0bd present=True
+00:1c.0 SubsystemVendorId=0000 present=True
+00:1c.0 SubsystemId=0000 present=True
+00:1c.0 Revision=20 present=True
+00:1c.0 ClassCode=0604 present=True
+00:1c.0 ProgIf=0 present=True
+00:1c.0 Driver=pci present=True
+00:1c.0 DriverVersion=10.1.24.5 present=True
+00:1c.0 Status=OK present=True
+00:1c.0 Problem=0 present=True
+00:1c.0 NumaNode= present=False
+00:1c.0 LinkStateReported=False present=True
+00:1c.0 LinkSpeed= present=False
+00:1c.0 LinkSpeedRaw= present=False
+00:1c.0 LinkWidth= present=False
+00:1c.0 MaxLinkSpeed= present=False
+00:1c.0 MaxLinkSpeedRaw= present=False
+00:1c.0 MaxLinkWidth= present=False
+00:1c.0 Downtrained=False present=True
+00:1c.0 MaxPayloadSize= present=False
+00:1c.0 MaxPayloadSizeSupported= present=False
+00:1c.0 MaxReadRequestSize= present=False
+00:1c.0 AerCapable=False present=True
+00:1c.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:1c.0 InstanceId=PCI\VEN_8086&DEV_A0BD&SUBSYS_00000000&REV_20\3&11583659&0&E0 present=True
+00:1c.0 Present=True present=True
+00:1d.0 Slot=00:1d.0 present=True
+00:1d.0 Domain=0 present=True
+00:1d.0 VendorId=8086 present=True
+00:1d.0 DeviceId=a0b0 present=True
+00:1d.0 SubsystemVendorId=8086 present=True
+00:1d.0 SubsystemId=7270 present=True
+00:1d.0 Revision=20 present=True
+00:1d.0 ClassCode=0604 present=True
+00:1d.0 ProgIf=0 present=True
+00:1d.0 Driver=pci present=True
+00:1d.0 DriverVersion=10.1.24.5 present=True
+00:1d.0 Status=OK present=True
+00:1d.0 Problem=0 present=True
+00:1d.0 NumaNode= present=False
+00:1d.0 LinkStateReported=False present=True
+00:1d.0 LinkSpeed= present=False
+00:1d.0 LinkSpeedRaw= present=False
+00:1d.0 LinkWidth= present=False
+00:1d.0 MaxLinkSpeed= present=False
+00:1d.0 MaxLinkSpeedRaw= present=False
+00:1d.0 MaxLinkWidth= present=False
+00:1d.0 Downtrained=False present=True
+00:1d.0 MaxPayloadSize= present=False
+00:1d.0 MaxPayloadSizeSupported= present=False
+00:1d.0 MaxReadRequestSize= present=False
+00:1d.0 AerCapable=False present=True
+00:1d.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:1d.0 InstanceId=PCI\VEN_8086&DEV_A0B0&SUBSYS_72708086&REV_20\3&11583659&0&E8 present=True
+00:1d.0 Present=True present=True
+00:1e.0 Slot=00:1e.0 present=True
+00:1e.0 Domain=0 present=True
+00:1e.0 VendorId=8086 present=True
+00:1e.0 DeviceId=a0a8 present=True
+00:1e.0 SubsystemVendorId=8086 present=True
+00:1e.0 SubsystemId=7270 present=True
+00:1e.0 Revision=20 present=True
+00:1e.0 ClassCode=0780 present=True
+00:1e.0 ProgIf=0 present=True
+00:1e.0 Driver=iaLPSS2_UART2_TGL present=True
+00:1e.0 DriverVersion=30.100.2031.2 present=True
+00:1e.0 Status=OK present=True
+00:1e.0 Problem=0 present=True
+00:1e.0 NumaNode= present=False
+00:1e.0 LinkStateReported=False present=True
+00:1e.0 LinkSpeed= present=False
+00:1e.0 LinkSpeedRaw= present=False
+00:1e.0 LinkWidth= present=False
+00:1e.0 MaxLinkSpeed= present=False
+00:1e.0 MaxLinkSpeedRaw= present=False
+00:1e.0 MaxLinkWidth= present=False
+00:1e.0 Downtrained=False present=True
+00:1e.0 MaxPayloadSize= present=False
+00:1e.0 MaxPayloadSizeSupported= present=False
+00:1e.0 MaxReadRequestSize= present=False
+00:1e.0 AerCapable= present=False
+00:1e.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:1e.0 InstanceId=PCI\VEN_8086&DEV_A0A8&SUBSYS_72708086&REV_20\3&11583659&0&F0 present=True
+00:1e.0 Present=True present=True
+00:1f.0 Slot=00:1f.0 present=True
+00:1f.0 Domain=0 present=True
+00:1f.0 VendorId=8086 present=True
+00:1f.0 DeviceId=a082 present=True
+00:1f.0 SubsystemVendorId=8086 present=True
+00:1f.0 SubsystemId=7270 present=True
+00:1f.0 Revision=20 present=True
+00:1f.0 ClassCode=0601 present=True
+00:1f.0 ProgIf=0 present=True
+00:1f.0 Driver=msisadrv present=True
+00:1f.0 DriverVersion=10.1.24.5 present=True
+00:1f.0 Status=OK present=True
+00:1f.0 Problem=0 present=True
+00:1f.0 NumaNode= present=False
+00:1f.0 LinkStateReported=False present=True
+00:1f.0 LinkSpeed= present=False
+00:1f.0 LinkSpeedRaw= present=False
+00:1f.0 LinkWidth= present=False
+00:1f.0 MaxLinkSpeed= present=False
+00:1f.0 MaxLinkSpeedRaw= present=False
+00:1f.0 MaxLinkWidth= present=False
+00:1f.0 Downtrained=False present=True
+00:1f.0 MaxPayloadSize= present=False
+00:1f.0 MaxPayloadSizeSupported= present=False
+00:1f.0 MaxReadRequestSize= present=False
+00:1f.0 AerCapable= present=False
+00:1f.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:1f.0 InstanceId=PCI\VEN_8086&DEV_A082&SUBSYS_72708086&REV_20\3&11583659&0&F8 present=True
+00:1f.0 Present=True present=True
+00:1f.3 Slot=00:1f.3 present=True
+00:1f.3 Domain=0 present=True
+00:1f.3 VendorId=8086 present=True
+00:1f.3 DeviceId=a0c8 present=True
+00:1f.3 SubsystemVendorId=8086 present=True
+00:1f.3 SubsystemId=7270 present=True
+00:1f.3 Revision=20 present=True
+00:1f.3 ClassCode=0403 present=True
+00:1f.3 ProgIf=128 present=True
+00:1f.3 Driver=IntcAudioBus present=True
+00:1f.3 DriverVersion=10.29.0.12108 present=True
+00:1f.3 Status=OK present=True
+00:1f.3 Problem=0 present=True
+00:1f.3 NumaNode= present=False
+00:1f.3 LinkStateReported=False present=True
+00:1f.3 LinkSpeed= present=False
+00:1f.3 LinkSpeedRaw= present=False
+00:1f.3 LinkWidth= present=False
+00:1f.3 MaxLinkSpeed= present=False
+00:1f.3 MaxLinkSpeedRaw= present=False
+00:1f.3 MaxLinkWidth= present=False
+00:1f.3 Downtrained=False present=True
+00:1f.3 MaxPayloadSize= present=False
+00:1f.3 MaxPayloadSizeSupported= present=False
+00:1f.3 MaxReadRequestSize= present=False
+00:1f.3 AerCapable= present=False
+00:1f.3 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:1f.3 InstanceId=PCI\VEN_8086&DEV_A0C8&SUBSYS_72708086&REV_20\3&11583659&0&FB present=True
+00:1f.3 Present=True present=True
+00:1f.5 Slot=00:1f.5 present=True
+00:1f.5 Domain=0 present=True
+00:1f.5 VendorId=8086 present=True
+00:1f.5 DeviceId=a0a4 present=True
+00:1f.5 SubsystemVendorId=8086 present=True
+00:1f.5 SubsystemId=7270 present=True
+00:1f.5 Revision=20 present=True
+00:1f.5 ClassCode=0c80 present=True
+00:1f.5 ProgIf=0 present=True
+00:1f.5 Driver= present=False
+00:1f.5 DriverVersion=10.1.24.5 present=True
+00:1f.5 Status=OK present=True
+00:1f.5 Problem=0 present=True
+00:1f.5 NumaNode= present=False
+00:1f.5 LinkStateReported=False present=True
+00:1f.5 LinkSpeed= present=False
+00:1f.5 LinkSpeedRaw= present=False
+00:1f.5 LinkWidth= present=False
+00:1f.5 MaxLinkSpeed= present=False
+00:1f.5 MaxLinkSpeedRaw= present=False
+00:1f.5 MaxLinkWidth= present=False
+00:1f.5 Downtrained=False present=True
+00:1f.5 MaxPayloadSize= present=False
+00:1f.5 MaxPayloadSizeSupported= present=False
+00:1f.5 MaxReadRequestSize= present=False
+00:1f.5 AerCapable= present=False
+00:1f.5 ParentInstanceId=ACPI\PNP0A08\0 present=True
+00:1f.5 InstanceId=PCI\VEN_8086&DEV_A0A4&SUBSYS_72708086&REV_20\3&11583659&0&FD present=True
+00:1f.5 Present=True present=True
+01:00.0 Slot=01:00.0 present=True
+01:00.0 Domain=0 present=True
+01:00.0 VendorId=1c5c present=True
+01:00.0 DeviceId=174a present=True
+01:00.0 SubsystemVendorId=1c5c present=True
+01:00.0 SubsystemId=174a present=True
+01:00.0 Revision=00 present=True
+01:00.0 ClassCode=0108 present=True
+01:00.0 ProgIf=2 present=True
+01:00.0 Driver=stornvme present=True
+01:00.0 DriverVersion=10.0.26100.8972 present=True
+01:00.0 Status=OK present=True
+01:00.0 Problem=0 present=True
+01:00.0 NumaNode= present=False
+01:00.0 LinkStateReported=True present=True
+01:00.0 LinkSpeed=8GT/s present=True
+01:00.0 LinkSpeedRaw=3 present=True
+01:00.0 LinkWidth=4 present=True
+01:00.0 MaxLinkSpeed=8GT/s present=True
+01:00.0 MaxLinkSpeedRaw=3 present=True
+01:00.0 MaxLinkWidth=4 present=True
+01:00.0 Downtrained=False present=True
+01:00.0 MaxPayloadSize=256 present=True
+01:00.0 MaxPayloadSizeSupported=512 present=True
+01:00.0 MaxReadRequestSize=512 present=True
+01:00.0 AerCapable=True present=True
+01:00.0 ParentInstanceId=PCI\VEN_8086&DEV_9A09&SUBSYS_72708086&REV_01\3&11583659&0&30 present=True
+01:00.0 InstanceId=PCI\VEN_1C5C&DEV_174A&SUBSYS_174A1C5C&REV_00\4&391CC7C&0&0030 present=True
+01:00.0 Present=True present=True
+f2:00.0 Slot=f2:00.0 present=True
+f2:00.0 Domain=0 present=True
+f2:00.0 VendorId=8086 present=True
+f2:00.0 DeviceId=2723 present=True
+f2:00.0 SubsystemVendorId=8086 present=True
+f2:00.0 SubsystemId=0080 present=True
+f2:00.0 Revision=1a present=True
+f2:00.0 ClassCode=0280 present=True
+f2:00.0 ProgIf=0 present=True
+f2:00.0 Driver=Netwtw10 present=True
+f2:00.0 DriverVersion=24.20.2.1 present=True
+f2:00.0 Status=OK present=True
+f2:00.0 Problem=0 present=True
+f2:00.0 NumaNode= present=False
+f2:00.0 LinkStateReported=True present=True
+f2:00.0 LinkSpeed=5GT/s present=True
+f2:00.0 LinkSpeedRaw=2 present=True
+f2:00.0 LinkWidth=1 present=True
+f2:00.0 MaxLinkSpeed=5GT/s present=True
+f2:00.0 MaxLinkSpeedRaw=2 present=True
+f2:00.0 MaxLinkWidth=1 present=True
+f2:00.0 Downtrained=False present=True
+f2:00.0 MaxPayloadSize=128 present=True
+f2:00.0 MaxPayloadSizeSupported=128 present=True
+f2:00.0 MaxReadRequestSize=128 present=True
+f2:00.0 AerCapable=True present=True
+f2:00.0 ParentInstanceId=PCI\VEN_8086&DEV_A0BD&SUBSYS_00000000&REV_20\3&11583659&0&E0 present=True
+f2:00.0 InstanceId=PCI\VEN_8086&DEV_2723&SUBSYS_00808086&REV_1A\4&328243D9&0&00E0 present=True
+f2:00.0 Present=True present=True
+f3:00.0 Slot=f3:00.0 present=True
+f3:00.0 Domain=0 present=True
+f3:00.0 VendorId=10de present=True
+f3:00.0 DeviceId=25a0 present=True
+f3:00.0 SubsystemVendorId=1414 present=True
+f3:00.0 SubsystemId=0054 present=True
+f3:00.0 Revision=a1 present=True
+f3:00.0 ClassCode=0302 present=True
+f3:00.0 ProgIf=0 present=True
+f3:00.0 Driver=nvlddmkm present=True
+f3:00.0 DriverVersion=32.0.16.1088 present=True
+f3:00.0 Status=OK present=True
+f3:00.0 Problem=0 present=True
+f3:00.0 NumaNode= present=False
+f3:00.0 LinkStateReported=True present=True
+f3:00.0 LinkSpeed=8GT/s present=True
+f3:00.0 LinkSpeedRaw=3 present=True
+f3:00.0 LinkWidth=4 present=True
+f3:00.0 MaxLinkSpeed=16GT/s present=True
+f3:00.0 MaxLinkSpeedRaw=4 present=True
+f3:00.0 MaxLinkWidth=16 present=True
+f3:00.0 Downtrained=True present=True
+f3:00.0 MaxPayloadSize=256 present=True
+f3:00.0 MaxPayloadSizeSupported=256 present=True
+f3:00.0 MaxReadRequestSize=512 present=True
+f3:00.0 AerCapable=True present=True
+f3:00.0 ParentInstanceId=PCI\VEN_8086&DEV_A0B0&SUBSYS_72708086&REV_20\3&11583659&0&E8 present=True
+f3:00.0 InstanceId=PCI\VEN_10DE&DEV_25A0&SUBSYS_00541414&REV_A1\4&32093AAF&0&00E8 present=True
+f3:00.0 Present=True present=True
