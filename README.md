@@ -12,10 +12,22 @@ PS> lspci -nn
 PS> lspci -d 1c5c: -vv
 01:00.0 Non-Volatile memory controller: SK hynix Gold P31/BC711/PC711 NVMe Solid State Drive (rev 00)
         LnkSta: 8GT/s x4 (max 8GT/s x4)
+        Type: PCIe Endpoint (PCIe capability v2)
         Driver: stornvme (10.0.26100.8972)
         Subsystem: SK hynix [1c5c:174a]
         DevCtl: MPS 256 bytes (max 512), MaxReadReq 512 bytes
-        Capabilities: AER present
+        Capabilities: AER, MSI, MSI-X (33 vectors)
+        Device Serial Number 00-00-00-00-00-00-00-00 (capability present, not populated)
+        Power: D0 (most recent state Windows recorded)
+        Location: PCIROOT(0)#PCI(0600)#PCI(0000)
+        InstanceId: PCI\VEN_1C5C&DEV_174A&SUBSYS_174A1C5C&REV_00\4&391CC7C&0&0030
+
+PS> lspci -s f3:00.0 -v
+f3:00.0 3D controller: NVIDIA Corporation GA107M [GeForce RTX 3050 Ti Mobile] (rev a1)
+        LnkSta: 8GT/s x4 (max 16GT/s x16)  <-- DOWNTRAINED (speed, width)
+                (device is in D3: may be idle link power management rather than a fault)
+        Type: PCIe Endpoint (PCIe capability v2)
+        Driver: nvlddmkm (32.0.16.1088)
 
 PS> lspci -t
 -00:1d.0  Tiger Lake-LP PCI Express Root Port #9
@@ -40,12 +52,16 @@ PCI bus driver from config space at enumeration time.
 | ✅ Reports | ❌ Cannot report |
 |---|---|
 | Presence, vendor / device / subsystem IDs, revision | `lspci -x` config-space hex dumps |
-| Class / subclass / prog-if, with names | Capability structure walks |
+| Class / subclass / prog-if, with names | Capability structure **contents** (presence is reported) |
 | `[domain:]bus:device.function` — the PCI segment too, where Windows reports one (Hyper-V / Azure) | ASPM state, LTR, DPC |
 | **Negotiated *and* maximum** link speed and width | AER register detail (presence only) |
 | MPS, MRRS | Anything requiring a live register read |
 | Driver binding and version, device status / problem code | |
-| NUMA node, AER capability presence | |
+| **Device type**: root port / upstream / downstream switch port / endpoint / integrated endpoint | |
+| **Capability presence**: AER, MSI, MSI-X (+ vector count), SR-IOV, ACS, ARI, ATS, AtomicOps; PCIe capability version | |
+| **Physical slot** number, firmware location path, device serial number (DSN) | |
+| **Power state** (most recent D-state) — shown next to a `DOWNTRAINED` flag when it explains it | |
+| NUMA node | |
 | **Bus topology** (parent/child, via `DEVPKEY_Device_Parent`) | |
 | Every field above, queryable **per attribute** | |
 
@@ -66,6 +82,7 @@ to PCI config space; that needs a signed kernel-mode driver. ...
 | 1 | a filter (`-s`, `-d`, `-Downtrained`, `-Attribute`/`-Match`) matched nothing |
 | 2 | the request is impossible here (`-x`) or a known lspci flag this tool does not implement (`-m`, `-p`, `-b`, …) |
 | 64 | usage error: unknown option, or a selector that is not hex |
+| 70 | the WMI enumeration itself failed (Windows/WMI error — not an empty machine; retry, or check the Winmgmt service) |
 
 ---
 
@@ -120,9 +137,9 @@ Measured against Linux `lspci`, not aspirational.
 |---|---|---|
 | `-s [[<dom>]:]<bus>:]<dev>[.<fn>]` | `-s` | lspci's grammar, every field optional: `01:` (bus), `01:00.0`, `1` (**device** 01 on any bus), `.0` (every function 0), `:00.0`, `0000:01:00.0`. Padded or unpadded. A selector without a domain matches every domain; `556f:00:02.0` only that one |
 | `-d [<ven>]:[<dev>][:<class>]` | `-d` | Vendor and device are exact hex IDs (`-d 80:` is vendor `0080`, not every `80xx`); class is a prefix (`::01` = all storage). `-d 11f8:`, `-d :174a`, `-d ::0108` |
-| `-t` | `-t` | Real topology, from `DEVPKEY_Device_Parent`. Shows link state inline |
-| `-v` | `-v` | Link state (current **and** max), driver, status |
-| `-vv` | `-vv` | Adds MPS, MRRS, subsystem (`vendor:device`), NUMA, AER presence |
+| `-t` | `-t` | Real topology, from `DEVPKEY_Device_Parent`. Shows link state inline; bridges tagged `[root port]` / `[upstream port]` / `[downstream port]` |
+| `-v` | `-v` | Physical slot, link state (current **and** max, with the power state when it explains a downtrain), device type, driver, status |
+| `-vv` | `-vv` | Adds MPS, MRRS, subsystem (`vendor:device`), NUMA, capability presence (`Capabilities: AER, MSI-X (33 vectors), SR-IOV …`), `ACS: present|not needed|missing`, serial number, power state, location path |
 | `-vvv` | `-vvv` | Everything `-vv` shows, then every property Windows exposes, **plus an explicit list of what is missing** |
 | `-n` | `-n` | IDs only |
 | `-nn` | `-nn` | Names and IDs |
@@ -302,6 +319,49 @@ field by field, so `1:` and `01:` agree, `-s 1` means device 01 on any bus
 `:00.0` work. `-d` compares vendor and device as hex numbers, so `-d 8:`
 no longer quietly returns every Intel device. Anything that is not hex is one
 clear error, not a .NET exception per device.
+
+---
+
+## Device type, capabilities, slot, power
+
+All four come from DEVPKEYs the PCI bus driver fills from config space at
+enumeration, so they cost nothing extra in trust — and ~300 ms extra per full
+listing, which the Performance section accounts for.
+
+- **`DeviceType`** — what Windows says the device *is*: `PCIe Root Port`,
+  `PCIe Upstream Switch Port`, `PCIe Downstream Switch Port`, `PCIe Endpoint`,
+  `PCIe Root Complex Integrated Endpoint`, conventional `PCI`, … `IsBridge` is
+  derived. `-t` tags the bridges, and a device that reports no link state now
+  says *why* when the type explains it (integrated endpoint, conventional PCI)
+  rather than the generic "not reported".
+- **Capability presence** — one `-vv` line: `Capabilities: AER, MSI, MSI-X (33
+  vectors), SR-IOV, ARI, ATS, AtomicOps`. *Presence*, not contents: which
+  capabilities the device carries is in the PnP data; what their registers
+  say is not, and `-vvv` continues to say so. Each flag is also a boolean
+  attribute (`-Attribute *Capable, Msi*`), `$null` when Windows reported
+  nothing. SR-IOV is reported only for devices that carry the capability, and
+  its value is a status (`SriovStatus`: `ok`, or a reason VFs cannot be
+  enabled).
+- **`ACS:`** on its own line — `present`, `not needed` (root-complex
+  integrated endpoints, which have no peer-to-peer path to isolate) or, on a
+  bridge, `missing` — because it is a statement about the *port*, and
+  "missing" does not belong in a list of things a device has. An endpoint
+  without ACS is the normal case and says nothing about isolation (the ports
+  above it decide that), so it is not printed for endpoints; the attribute
+  `AcsSupport` still carries it. The three values were verified against the
+  ACS capability register on real hardware, not read off an enum: every
+  `present` port carries a populated register, every `missing` one has none.
+  If you are reasoning about IOMMU groups or DMA isolation, this is the line.
+- **`PhysicalSlot`** — the chassis slot number (`DEVPKEY_Device_UINumber`),
+  printed as lspci's `Physical Slot:`; **`LocationPath`** —
+  `PCIROOT(0)#PCI(1C00)#PCI(0000)`; **`SerialNumber`** — the Device Serial
+  Number capability as `00-11-22-33-44-55-66-77`.
+- **`PowerState`** — the most recent D-state Windows recorded for the device
+  (`DEVPKEY_Device_PowerData`). Shown in `-vv`, and appended to a `DOWNTRAINED`
+  flag when the device is in D1–D3: *"(device is in D3: may be idle link power
+  management rather than a fault)"*. It is a snapshot, not a live read — the device
+  may have woken since — which is why it is offered as the likely explanation
+  and not as a verdict.
 
 ---
 

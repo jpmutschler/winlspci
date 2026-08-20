@@ -53,6 +53,11 @@ function Format-Lspci {
             Write-Output ("{0} {1}: {2}{3}" -f (Get-Field $d 'Slot'), $classPart, $ident, $rev)
 
             if ($Verbosity -ge 1) {
+                # lspci prints the chassis slot right under the header line.
+                $physSlot = Get-Field $d 'PhysicalSlot'
+                if ($null -ne $physSlot) { Write-Output "        Physical Slot: $(ConvertTo-SafeText $physSlot)" }
+
+                $powerState = Get-Field $d 'PowerState'
                 if (Get-Field $d 'LinkStateReported') {
                     $width = Get-Field $d 'LinkWidth'
                     $maxWidth = Get-Field $d 'MaxLinkWidth'
@@ -69,10 +74,32 @@ function Format-Lspci {
                     # the reader compare two numbers.
                     $reasons = Get-LinkDowntrainReason (Get-Field $d 'LinkSpeedRaw') `
                         (Get-Field $d 'MaxLinkSpeedRaw') $width $maxWidth
-                    foreach ($r in $reasons) { $line += "  <-- DOWNTRAINED ($r)" }
+                    if ($reasons.Count -gt 0) { $line += "  <-- DOWNTRAINED ($($reasons -join ', '))" }
                     Write-Output $line
+                    # A downtrained link on a device in D1-D3 is almost always
+                    # idle link power management. Say so, on its own line under
+                    # the flag, rather than leaving the reader to guess -- and
+                    # only when the state is actually known and not D0.
+                    # "may be", not "is": the D-state is a snapshot, and a stale
+                    # D3 must not talk anyone out of looking at a real downtrain.
+                    if ($reasons.Count -gt 0 -and $powerState -and $powerState -ne 'D0') {
+                        Write-Output "                (device is in ${powerState}: may be idle link power management rather than a fault)"
+                    }
                 } else {
-                    Write-Output '        LnkSta: not reported by this device'
+                    $why = 'not reported by this device'
+                    $typeRaw = Get-Field $d 'DeviceTypeRaw'
+                    if ($null -ne $typeRaw -and [int]$typeRaw -eq 4) { $why = 'root-complex integrated endpoint: no link' }
+                    elseif ($null -ne $typeRaw -and [int]$typeRaw -in 5, 13) { $why = 'Windows treats this PCIe device as conventional PCI: no link reported' }
+                    elseif ($null -ne $typeRaw -and [int]$typeRaw -in 0, 1, 6, 7) { $why = 'Windows reports this as a conventional PCI device: no PCIe link' }
+                    Write-Output "        LnkSta: $why"
+                }
+
+                $typeName = Get-Field $d 'DeviceType'
+                if ($typeName) {
+                    $typeLine = "        Type: $typeName"
+                    $specVer = Get-Field $d 'ExpressSpecVersion'
+                    if ($null -ne $specVer) { $typeLine += " (PCIe capability v$specVer)" }
+                    Write-Output $typeLine
                 }
 
                 $drv = ConvertTo-SafeText (Get-Field $d 'Driver')
@@ -90,7 +117,10 @@ function Format-Lspci {
             if ($Verbosity -ge 2) {
                 $subVen = Get-Field $d 'SubsystemVendorId'
                 $subDev = Get-Field $d 'SubsystemId'
-                if ($subVen -and $subDev) {
+                # 0000:0000 is "no subsystem", not a subsystem called 0000.
+                # lspci omits the line; so do we, rather than inventing
+                # "Vendor 0000" for it.
+                if ($subVen -and $subDev -and -not ($subVen -eq '0000' -and $subDev -eq '0000')) {
                     $subName = Get-PciVendorName $subVen
                     if (-not $subName) { $subName = "Vendor $subVen" }
                     Write-Output "        Subsystem: $subName [${subVen}:${subDev}]"
@@ -102,7 +132,62 @@ function Format-Lspci {
                 }
                 $numa = Get-Field $d 'NumaNode'
                 if ($null -ne $numa) { Write-Output "        NUMA node: $numa" }
-                if (Get-Field $d 'AerCapable') { Write-Output '        Capabilities: AER present' }
+
+                # Capability PRESENCE, as one line -- what lspci's capability
+                # list would show minus the contents, which need config space.
+                # Omitted entirely when Windows reported none of the keys;
+                # "none reported" when it reported them all as absent.
+                $caps = @()
+                $anyReported = $false
+                foreach ($pair in @(
+                        @('AerCapable', 'AER'), @('MsiSupported', 'MSI'), @('MsixSupported', 'MSI-X'),
+                        @('SriovCapable', 'SR-IOV'), @('AriCapable', 'ARI'), @('AtsCapable', 'ATS'),
+                        @('AtomicsCapable', 'AtomicOps'))) {
+                    $v = Get-Field $d $pair[0]
+                    if ($null -eq $v) { continue }
+                    $anyReported = $true
+                    if ($v) {
+                        $label = $pair[1]
+                        if ($pair[0] -eq 'MsixSupported' -or ($pair[0] -eq 'MsiSupported' -and -not (Get-Field $d 'MsixSupported'))) {
+                            $vec = Get-Field $d 'InterruptVectorsMax'
+                            if ($null -ne $vec) {
+                                if ([int]$vec -eq 1) { $label += ' (1 vector)' } else { $label += " ($vec vectors)" }
+                            }
+                        }
+                        if ($pair[0] -eq 'SriovCapable') {
+                            $st = Get-Field $d 'SriovStatus'
+                            if ($st -and $st -ne 'ok') { $label += " ($st)" }
+                        }
+                        $caps += $label
+                    }
+                }
+                if ($anyReported) {
+                    if ($caps.Count -gt 0) { Write-Output "        Capabilities: $($caps -join ', ')" }
+                    else { Write-Output '        Capabilities: none reported' }
+                }
+                # ACS is a statement about the PORT, not a capability the
+                # device "has", and "missing" must not sit in a list of things
+                # that are present -- its own line. An endpoint with no ACS is
+                # the normal case and says nothing about isolation (that is
+                # decided by the ports above it), so "missing" is shown for
+                # bridges only; "present" and "not needed" are always shown.
+                $acs = Get-Field $d 'AcsSupport'
+                $isBridge = Get-Field $d 'IsBridge'
+                if ($acs -and ($acs -ne 'missing' -or $isBridge -or $null -eq $isBridge)) {
+                    $acsLine = "        ACS: $acs"
+                    if ($acs -eq 'missing') { $acsLine += ' (Windows expected ACS on this port and found none; matters for DMA isolation / IOMMU grouping)' }
+                    Write-Output $acsLine
+                }
+                $serial = Get-Field $d 'SerialNumber'
+                if ($serial) {
+                    $serialLine = "        Device Serial Number $serial"
+                    if ($serial -eq '00-00-00-00-00-00-00-00') { $serialLine += ' (capability present, not populated)' }
+                    Write-Output $serialLine
+                }
+                if ($powerState) { Write-Output "        Power: $powerState (most recent state Windows recorded)" }
+                # Firmware text, so sanitised like every other free string.
+                $locPath = ConvertTo-SafeText (Get-Field $d 'LocationPath')
+                if ($locPath) { Write-Output "        Location: $locPath" }
                 Write-Output "        InstanceId: $(Get-Field $d 'InstanceId')"
             }
 
@@ -117,12 +202,15 @@ function Format-Lspci {
                 foreach ($prop in ($d.PSObject.Properties | Sort-Object Name)) {
                     if ($prop.Name -eq 'PSTypeName') { continue }
                     $v = $prop.Value
+                    if ($v -is [array]) { $v = ($v -join ', ') }
                     if ($null -eq $v -or "$v" -eq '') { $v = '<not reported>' }
-                    Write-Output ("        {0,-24} {1}" -f $prop.Name, $v)
+                    # The dump is the one place every raw string reaches the
+                    # console; sanitise here too or -vvv bypasses the rule.
+                    Write-Output ("        {0,-24} {1}" -f $prop.Name, (ConvertTo-SafeText $v))
                 }
                 Write-Output ('        NOT AVAILABLE without a kernel driver: ' +
-                              'config-space dump, capability walk, ASPM, ' +
-                              'AER registers, LTR, DPC')
+                              'config-space dump, capability CONTENTS (presence only above), ' +
+                              'ASPM state, AER registers, LTR, DPC')
             }
         }
     }

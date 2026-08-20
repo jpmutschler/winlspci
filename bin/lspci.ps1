@@ -19,7 +19,7 @@
   error for anything unknown.
 
   Exit codes: 0 ok; 1 a filter matched nothing; 2 the request is impossible or
-  not implemented here; 64 usage error.
+  not implemented here; 64 usage error; 70 the WMI enumeration itself failed.
 
 .EXAMPLE
   lspci
@@ -331,7 +331,10 @@ if ($formats.Count -gt 1) { Fail "choose one output format, not -$($formats -joi
 try {
     $devices = @(Get-PciDevice -Device $opt.Device -Slot $opt.Slot | Sort-Object Slot)
 } catch {
-    # Selector validation errors (bad hex in -s / -d) surface here as one line.
+    # Selector validation errors (bad hex in -s / -d) are usage errors (64);
+    # a WMI/CIM failure during enumeration is not the user's doing (70), and
+    # must never be confused with "no devices".
+    if ($_.Exception.Message -like 'PCI enumeration failed:*') { Fail $_.Exception.Message 70 }
     Fail $_.Exception.Message 64
 }
 

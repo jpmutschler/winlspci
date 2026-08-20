@@ -11,7 +11,8 @@ jobs:
     # under powershell.exe (5.1) via cmd -- not the pwsh 7 that GitHub's
     # `shell: pwsh` would give. Hosted runners are Hyper-V VMs with a small PCI
     # inventory; hardware-dependent tests take their samples from whatever the
-    # machine has and skip with a reason where it has nothing suitable.
+    # machine has and skip with a reason where it has nothing suitable, and the
+    # recorded fixtures cover the rest deterministically.
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,3 +31,33 @@ jobs:
       - name: Run the test suite
         shell: cmd
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\Invoke-Tests.ps1
+
+  powershell-7:
+    # The README says "5.1 or later"; this is the "or later". Same suite,
+    # under pwsh. The CLI tests spawn powershell.exe 5.1 children regardless
+    # (bin\lspci.cmd is fixed to it), so this job proves the MODULE on 7.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PowerShell 7 version
+        shell: pwsh
+        run: $PSVersionTable.PSVersion.ToString()
+
+      - name: Run the test suite under pwsh
+        shell: pwsh
+        run: ./tests/Invoke-Tests.ps1
+
+  lint:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -Scope CurrentUser -Force -Repository PSGallery
+          $results = Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
+          $results | Format-Table -AutoSize | Out-String -Width 200 | Write-Host
+          if ($results | Where-Object Severity -eq 'Error') { throw "PSScriptAnalyzer reported errors" }
+          if ($results | Where-Object Severity -eq 'Warning') { throw "PSScriptAnalyzer reported warnings; fix or exclude with a reason in PSScriptAnalyzerSettings.psd1" }

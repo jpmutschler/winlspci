@@ -3,81 +3,106 @@
         LnkSta: not reported by this device
         Driver: <none> (10.0.26100.1150)
 00:02.0 0300: 8086:9a49 (rev 01)
-        LnkSta: not reported by this device
+        LnkSta: root-complex integrated endpoint: no link
+        Type: PCIe Root Complex Integrated Endpoint (PCIe capability v2)
         Driver: igfxn (32.0.101.7088)
 00:06.0 0604: 8086:9a09 (rev 01)
         LnkSta: not reported by this device
+        Type: PCIe Root Port (PCIe capability v2)
         Driver: pci (10.0.26100.8972)
 00:07.0 0604: 8086:9a23 (rev 01)
         LnkSta: not reported by this device
+        Type: PCIe Root Port (PCIe capability v2)
         Driver: pci (10.0.26100.8972)
 00:07.1 0604: 8086:9a25 (rev 01)
         LnkSta: not reported by this device
+        Type: PCIe Root Port (PCIe capability v2)
         Driver: pci (10.0.26100.8972)
 00:0a.0 1180: 8086:9a0d (rev 01)
-        LnkSta: not reported by this device
+        LnkSta: root-complex integrated endpoint: no link
+        Type: PCIe Root Complex Integrated Endpoint (PCIe capability v1)
         Driver: IntelPMT (10.0.26100.8972)
 00:0d.0 0c03: 8086:9a13 (rev 01)
-        LnkSta: not reported by this device
+        LnkSta: Windows reports this as a conventional PCI device: no PCIe link
+        Type: PCI
         Driver: USBXHCI (10.0.26100.8972)
 00:0d.2 0c03: 8086:9a1b (rev 01)
-        LnkSta: not reported by this device
+        LnkSta: Windows reports this as a conventional PCI device: no PCIe link
+        Type: PCI
         Driver: nhi (1.41.1423.0)
 00:10.0 0c80: 8086:a0d8 (rev 20)
-        LnkSta: not reported by this device
+        LnkSta: Windows reports this as a conventional PCI device: no PCIe link
+        Type: PCI
         Driver: iaLPSS2_I2C_TGL (30.100.2031.2)
 00:10.6 0901: 8086:a0d0 (rev 20)
-        LnkSta: not reported by this device
+        LnkSta: Windows reports this as a conventional PCI device: no PCIe link
+        Type: PCI
         Driver: IntelTHCBase (3.0.101.251)
 00:14.0 0c03: 8086:a0ed (rev 20)
-        LnkSta: not reported by this device
+        LnkSta: Windows reports this as a conventional PCI device: no PCIe link
+        Type: PCI
         Driver: USBXHCI (10.0.26100.8972)
 00:14.2 0500: 8086:a0ef (rev 20)
-        LnkSta: not reported by this device
+        LnkSta: Windows reports this as a conventional PCI device: no PCIe link
+        Type: PCI
         Driver: <none> (10.0.26100.1150)
 00:15.0 0c80: 8086:a0e8 (rev 20)
-        LnkSta: not reported by this device
+        LnkSta: Windows reports this as a conventional PCI device: no PCIe link
+        Type: PCI
         Driver: iaLPSS2_I2C_TGL (30.100.2031.2)
 00:15.1 0c80: 8086:a0e9 (rev 20)
-        LnkSta: not reported by this device
+        LnkSta: Windows reports this as a conventional PCI device: no PCIe link
+        Type: PCI
         Driver: iaLPSS2_I2C_TGL (30.100.2031.2)
 00:16.0 0780: 8086:a0e0 (rev 20)
-        LnkSta: not reported by this device
+        LnkSta: Windows reports this as a conventional PCI device: no PCIe link
+        Type: PCI
         Driver: MEIx64 (2540.8.7.0)
 00:1c.0 0604: 8086:a0bd (rev 20)
         LnkSta: not reported by this device
+        Type: PCIe Root Port (PCIe capability v2)
         Driver: pci (10.1.24.5)
 00:1d.0 0604: 8086:a0b0 (rev 20)
         LnkSta: not reported by this device
+        Type: PCIe Root Port (PCIe capability v2)
         Driver: pci (10.1.24.5)
 00:1e.0 0780: 8086:a0a8 (rev 20)
-        LnkSta: not reported by this device
+        LnkSta: Windows reports this as a conventional PCI device: no PCIe link
+        Type: PCI
         Driver: iaLPSS2_UART2_TGL (30.100.2031.2)
 00:1f.0 0601: 8086:a082 (rev 20)
-        LnkSta: not reported by this device
+        LnkSta: Windows reports this as a conventional PCI device: no PCIe link
+        Type: PCI
         Driver: msisadrv (10.1.24.5)
 00:1f.3 0403: 8086:a0c8 (rev 20)
-        LnkSta: not reported by this device
+        LnkSta: Windows reports this as a conventional PCI device: no PCIe link
+        Type: PCI
         Driver: IntcAudioBus (10.29.0.12108)
 00:1f.5 0c80: 8086:a0a4 (rev 20)
-        LnkSta: not reported by this device
+        LnkSta: Windows reports this as a conventional PCI device: no PCIe link
+        Type: PCI
         Driver: <none> (10.1.24.5)
 01:00.0 0108: 1c5c:174a (rev 00)
         LnkSta: 8GT/s x4 (max 8GT/s x4)
+        Type: PCIe Endpoint (PCIe capability v2)
         Driver: stornvme (10.0.26100.8972)
 f2:00.0 0280: 8086:2723 (rev 1a)
+        Physical Slot: 5
         LnkSta: 5GT/s x1 (max 5GT/s x1)
+        Type: PCIe Endpoint (PCIe capability v2)
         Driver: Netwtw10 (24.20.2.1)
 f3:00.0 0302: 10de:25a0 (rev a1)
-        LnkSta: 8GT/s x4 (max 16GT/s x16)  <-- DOWNTRAINED (speed)  <-- DOWNTRAINED (width)
+        LnkSta: 8GT/s x4 (max 16GT/s x16)  <-- DOWNTRAINED (speed, width)
+                (device is in D3: may be idle link power management rather than a fault)
+        Type: PCIe Endpoint (PCIe capability v2)
         Driver: nvlddmkm (32.0.16.1088)
 # lspci -t -n
 -00:00.0 [8086:9a14]
 -00:02.0 [8086:9a49]
--00:06.0 [8086:9a09]
+-00:06.0 [8086:9a09]  [root port]
  \-01:00.0 [1c5c:174a]  (8GT/s x4)
--00:07.0 [8086:9a23]
--00:07.1 [8086:9a25]
+-00:07.0 [8086:9a23]  [root port]
+-00:07.1 [8086:9a25]  [root port]
 -00:0a.0 [8086:9a0d]
 -00:0d.0 [8086:9a13]
 -00:0d.2 [8086:9a1b]
@@ -88,9 +113,9 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 -00:15.0 [8086:a0e8]
 -00:15.1 [8086:a0e9]
 -00:16.0 [8086:a0e0]
--00:1c.0 [8086:a0bd]
+-00:1c.0 [8086:a0bd]  [root port]
  \-f2:00.0 [8086:2723]  (5GT/s x1)
--00:1d.0 [8086:a0b0]
+-00:1d.0 [8086:a0b0]  [root port]
  \-f3:00.0 [10de:25a0]  (8GT/s x4)
 -00:1e.0 [8086:a0a8]
 -00:1f.0 [8086:a082]
@@ -123,6 +148,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:00.0 MaxPayloadSizeSupported= present=False
 00:00.0 MaxReadRequestSize= present=False
 00:00.0 AerCapable= present=False
+00:00.0 DeviceType= present=False
+00:00.0 DeviceTypeRaw= present=False
+00:00.0 IsBridge= present=False
+00:00.0 ExpressSpecVersion= present=False
+00:00.0 InterruptModes= present=False
+00:00.0 InterruptSupportRaw= present=False
+00:00.0 InterruptVectorsMax= present=False
+00:00.0 MsiSupported= present=False
+00:00.0 MsixSupported= present=False
+00:00.0 SriovCapable= present=False
+00:00.0 SriovStatus= present=False
+00:00.0 SriovSupportRaw= present=False
+00:00.0 AcsSupport= present=False
+00:00.0 AcsSupportRaw= present=False
+00:00.0 AcsCapabilityRegister= present=False
+00:00.0 AriCapable= present=False
+00:00.0 AtsCapable= present=False
+00:00.0 AtomicsCapable= present=False
+00:00.0 BarTypesRaw= present=False
+00:00.0 LinkSubStateRaw= present=False
+00:00.0 PhysicalSlot= present=False
+00:00.0 LocationPath=PCIROOT(0)#PCI(0000) present=True
+00:00.0 SerialNumber= present=False
+00:00.0 SerialNumberRaw= present=False
+00:00.0 PowerState=D0 present=True
 00:00.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:00.0 InstanceId=PCI\VEN_8086&DEV_9A14&SUBSYS_72708086&REV_01\3&11583659&0&00 present=True
 00:00.0 Present=True present=True
@@ -152,6 +202,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:02.0 MaxPayloadSizeSupported=128 present=True
 00:02.0 MaxReadRequestSize=128 present=True
 00:02.0 AerCapable=False present=True
+00:02.0 DeviceType=PCIe Root Complex Integrated Endpoint present=True
+00:02.0 DeviceTypeRaw=4 present=True
+00:02.0 IsBridge=False present=True
+00:02.0 ExpressSpecVersion=2 present=True
+00:02.0 InterruptModes=INTx,MSI present=True
+00:02.0 InterruptSupportRaw=3 present=True
+00:02.0 InterruptVectorsMax=1 present=True
+00:02.0 MsiSupported=True present=True
+00:02.0 MsixSupported=False present=True
+00:02.0 SriovCapable=True present=True
+00:02.0 SriovStatus=ok present=True
+00:02.0 SriovSupportRaw=0 present=True
+00:02.0 AcsSupport=not needed present=True
+00:02.0 AcsSupportRaw=1 present=True
+00:02.0 AcsCapabilityRegister=0 present=True
+00:02.0 AriCapable=False present=True
+00:02.0 AtsCapable=True present=True
+00:02.0 AtomicsCapable=False present=True
+00:02.0 BarTypesRaw=65793 present=True
+00:02.0 LinkSubStateRaw=0 present=True
+00:02.0 PhysicalSlot= present=False
+00:02.0 LocationPath=PCIROOT(0)#PCI(0200) present=True
+00:02.0 SerialNumber= present=False
+00:02.0 SerialNumberRaw= present=False
+00:02.0 PowerState=D0 present=True
 00:02.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:02.0 InstanceId=PCI\VEN_8086&DEV_9A49&SUBSYS_00451414&REV_01\3&11583659&0&10 present=True
 00:02.0 Present=True present=True
@@ -181,6 +256,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:06.0 MaxPayloadSizeSupported= present=False
 00:06.0 MaxReadRequestSize= present=False
 00:06.0 AerCapable=True present=True
+00:06.0 DeviceType=PCIe Root Port present=True
+00:06.0 DeviceTypeRaw=8 present=True
+00:06.0 IsBridge=True present=True
+00:06.0 ExpressSpecVersion=2 present=True
+00:06.0 InterruptModes= present=False
+00:06.0 InterruptSupportRaw= present=False
+00:06.0 InterruptVectorsMax= present=False
+00:06.0 MsiSupported= present=False
+00:06.0 MsixSupported= present=False
+00:06.0 SriovCapable= present=False
+00:06.0 SriovStatus= present=False
+00:06.0 SriovSupportRaw= present=False
+00:06.0 AcsSupport=present present=True
+00:06.0 AcsSupportRaw=0 present=True
+00:06.0 AcsCapabilityRegister=31 present=True
+00:06.0 AriCapable=True present=True
+00:06.0 AtsCapable=False present=True
+00:06.0 AtomicsCapable= present=False
+00:06.0 BarTypesRaw= present=False
+00:06.0 LinkSubStateRaw=15 present=True
+00:06.0 PhysicalSlot= present=False
+00:06.0 LocationPath=PCIROOT(0)#PCI(0600) present=True
+00:06.0 SerialNumber= present=False
+00:06.0 SerialNumberRaw= present=False
+00:06.0 PowerState=D0 present=True
 00:06.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:06.0 InstanceId=PCI\VEN_8086&DEV_9A09&SUBSYS_72708086&REV_01\3&11583659&0&30 present=True
 00:06.0 Present=True present=True
@@ -210,6 +310,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:07.0 MaxPayloadSizeSupported= present=False
 00:07.0 MaxReadRequestSize= present=False
 00:07.0 AerCapable=False present=True
+00:07.0 DeviceType=PCIe Root Port present=True
+00:07.0 DeviceTypeRaw=8 present=True
+00:07.0 IsBridge=True present=True
+00:07.0 ExpressSpecVersion=2 present=True
+00:07.0 InterruptModes= present=False
+00:07.0 InterruptSupportRaw= present=False
+00:07.0 InterruptVectorsMax= present=False
+00:07.0 MsiSupported= present=False
+00:07.0 MsixSupported= present=False
+00:07.0 SriovCapable= present=False
+00:07.0 SriovStatus= present=False
+00:07.0 SriovSupportRaw= present=False
+00:07.0 AcsSupport=missing present=True
+00:07.0 AcsSupportRaw=2 present=True
+00:07.0 AcsCapabilityRegister=0 present=True
+00:07.0 AriCapable=True present=True
+00:07.0 AtsCapable=False present=True
+00:07.0 AtomicsCapable= present=False
+00:07.0 BarTypesRaw= present=False
+00:07.0 LinkSubStateRaw=0 present=True
+00:07.0 PhysicalSlot= present=False
+00:07.0 LocationPath=PCIROOT(0)#PCI(0700) present=True
+00:07.0 SerialNumber= present=False
+00:07.0 SerialNumberRaw= present=False
+00:07.0 PowerState=D3 present=True
 00:07.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:07.0 InstanceId=PCI\VEN_8086&DEV_9A23&SUBSYS_72708086&REV_01\3&11583659&0&38 present=True
 00:07.0 Present=True present=True
@@ -239,6 +364,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:07.1 MaxPayloadSizeSupported= present=False
 00:07.1 MaxReadRequestSize= present=False
 00:07.1 AerCapable=False present=True
+00:07.1 DeviceType=PCIe Root Port present=True
+00:07.1 DeviceTypeRaw=8 present=True
+00:07.1 IsBridge=True present=True
+00:07.1 ExpressSpecVersion=2 present=True
+00:07.1 InterruptModes= present=False
+00:07.1 InterruptSupportRaw= present=False
+00:07.1 InterruptVectorsMax= present=False
+00:07.1 MsiSupported= present=False
+00:07.1 MsixSupported= present=False
+00:07.1 SriovCapable= present=False
+00:07.1 SriovStatus= present=False
+00:07.1 SriovSupportRaw= present=False
+00:07.1 AcsSupport=missing present=True
+00:07.1 AcsSupportRaw=2 present=True
+00:07.1 AcsCapabilityRegister=0 present=True
+00:07.1 AriCapable=True present=True
+00:07.1 AtsCapable=False present=True
+00:07.1 AtomicsCapable= present=False
+00:07.1 BarTypesRaw= present=False
+00:07.1 LinkSubStateRaw=0 present=True
+00:07.1 PhysicalSlot= present=False
+00:07.1 LocationPath=PCIROOT(0)#PCI(0701) present=True
+00:07.1 SerialNumber= present=False
+00:07.1 SerialNumberRaw= present=False
+00:07.1 PowerState=D3 present=True
 00:07.1 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:07.1 InstanceId=PCI\VEN_8086&DEV_9A25&SUBSYS_72708086&REV_01\3&11583659&0&39 present=True
 00:07.1 Present=True present=True
@@ -268,6 +418,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:0a.0 MaxPayloadSizeSupported=128 present=True
 00:0a.0 MaxReadRequestSize=128 present=True
 00:0a.0 AerCapable=False present=True
+00:0a.0 DeviceType=PCIe Root Complex Integrated Endpoint present=True
+00:0a.0 DeviceTypeRaw=4 present=True
+00:0a.0 IsBridge=False present=True
+00:0a.0 ExpressSpecVersion=1 present=True
+00:0a.0 InterruptModes= present=False
+00:0a.0 InterruptSupportRaw= present=False
+00:0a.0 InterruptVectorsMax= present=False
+00:0a.0 MsiSupported= present=False
+00:0a.0 MsixSupported= present=False
+00:0a.0 SriovCapable= present=False
+00:0a.0 SriovStatus= present=False
+00:0a.0 SriovSupportRaw= present=False
+00:0a.0 AcsSupport=not needed present=True
+00:0a.0 AcsSupportRaw=1 present=True
+00:0a.0 AcsCapabilityRegister=0 present=True
+00:0a.0 AriCapable=False present=True
+00:0a.0 AtsCapable=False present=True
+00:0a.0 AtomicsCapable=False present=True
+00:0a.0 BarTypesRaw=256 present=True
+00:0a.0 LinkSubStateRaw=0 present=True
+00:0a.0 PhysicalSlot= present=False
+00:0a.0 LocationPath=PCIROOT(0)#PCI(0A00) present=True
+00:0a.0 SerialNumber= present=False
+00:0a.0 SerialNumberRaw= present=False
+00:0a.0 PowerState=D0 present=True
 00:0a.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:0a.0 InstanceId=PCI\VEN_8086&DEV_9A0D&SUBSYS_72708086&REV_01\3&11583659&0&50 present=True
 00:0a.0 Present=True present=True
@@ -297,6 +472,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:0d.0 MaxPayloadSizeSupported= present=False
 00:0d.0 MaxReadRequestSize= present=False
 00:0d.0 AerCapable= present=False
+00:0d.0 DeviceType=PCI present=True
+00:0d.0 DeviceTypeRaw=0 present=True
+00:0d.0 IsBridge=False present=True
+00:0d.0 ExpressSpecVersion= present=False
+00:0d.0 InterruptModes=MSI present=True
+00:0d.0 InterruptSupportRaw=2 present=True
+00:0d.0 InterruptVectorsMax=8 present=True
+00:0d.0 MsiSupported=True present=True
+00:0d.0 MsixSupported=False present=True
+00:0d.0 SriovCapable= present=False
+00:0d.0 SriovStatus= present=False
+00:0d.0 SriovSupportRaw= present=False
+00:0d.0 AcsSupport= present=False
+00:0d.0 AcsSupportRaw= present=False
+00:0d.0 AcsCapabilityRegister= present=False
+00:0d.0 AriCapable= present=False
+00:0d.0 AtsCapable= present=False
+00:0d.0 AtomicsCapable= present=False
+00:0d.0 BarTypesRaw=256 present=True
+00:0d.0 LinkSubStateRaw=0 present=True
+00:0d.0 PhysicalSlot= present=False
+00:0d.0 LocationPath=PCIROOT(0)#PCI(0D00) present=True
+00:0d.0 SerialNumber= present=False
+00:0d.0 SerialNumberRaw= present=False
+00:0d.0 PowerState=D3 present=True
 00:0d.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:0d.0 InstanceId=PCI\VEN_8086&DEV_9A13&SUBSYS_72708086&REV_01\3&11583659&0&68 present=True
 00:0d.0 Present=True present=True
@@ -326,6 +526,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:0d.2 MaxPayloadSizeSupported= present=False
 00:0d.2 MaxReadRequestSize= present=False
 00:0d.2 AerCapable= present=False
+00:0d.2 DeviceType=PCI present=True
+00:0d.2 DeviceTypeRaw=0 present=True
+00:0d.2 IsBridge=False present=True
+00:0d.2 ExpressSpecVersion= present=False
+00:0d.2 InterruptModes=INTx,MSI,MSI-X present=True
+00:0d.2 InterruptSupportRaw=7 present=True
+00:0d.2 InterruptVectorsMax=16 present=True
+00:0d.2 MsiSupported=True present=True
+00:0d.2 MsixSupported=True present=True
+00:0d.2 SriovCapable= present=False
+00:0d.2 SriovStatus= present=False
+00:0d.2 SriovSupportRaw= present=False
+00:0d.2 AcsSupport= present=False
+00:0d.2 AcsSupportRaw= present=False
+00:0d.2 AcsCapabilityRegister= present=False
+00:0d.2 AriCapable= present=False
+00:0d.2 AtsCapable= present=False
+00:0d.2 AtomicsCapable= present=False
+00:0d.2 BarTypesRaw=512 present=True
+00:0d.2 LinkSubStateRaw=0 present=True
+00:0d.2 PhysicalSlot= present=False
+00:0d.2 LocationPath=PCIROOT(0)#PCI(0D02) present=True
+00:0d.2 SerialNumber= present=False
+00:0d.2 SerialNumberRaw= present=False
+00:0d.2 PowerState=D3 present=True
 00:0d.2 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:0d.2 InstanceId=PCI\VEN_8086&DEV_9A1B&SUBSYS_72708086&REV_01\3&11583659&0&6A present=True
 00:0d.2 Present=True present=True
@@ -355,6 +580,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:10.0 MaxPayloadSizeSupported= present=False
 00:10.0 MaxReadRequestSize= present=False
 00:10.0 AerCapable= present=False
+00:10.0 DeviceType=PCI present=True
+00:10.0 DeviceTypeRaw=0 present=True
+00:10.0 IsBridge=False present=True
+00:10.0 ExpressSpecVersion= present=False
+00:10.0 InterruptModes=INTx present=True
+00:10.0 InterruptSupportRaw=1 present=True
+00:10.0 InterruptVectorsMax= present=False
+00:10.0 MsiSupported=False present=True
+00:10.0 MsixSupported=False present=True
+00:10.0 SriovCapable= present=False
+00:10.0 SriovStatus= present=False
+00:10.0 SriovSupportRaw= present=False
+00:10.0 AcsSupport= present=False
+00:10.0 AcsSupportRaw= present=False
+00:10.0 AcsCapabilityRegister= present=False
+00:10.0 AriCapable= present=False
+00:10.0 AtsCapable= present=False
+00:10.0 AtomicsCapable= present=False
+00:10.0 BarTypesRaw=256 present=True
+00:10.0 LinkSubStateRaw=0 present=True
+00:10.0 PhysicalSlot= present=False
+00:10.0 LocationPath=PCIROOT(0)#PCI(1000) present=True
+00:10.0 SerialNumber= present=False
+00:10.0 SerialNumberRaw= present=False
+00:10.0 PowerState=D3 present=True
 00:10.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:10.0 InstanceId=PCI\VEN_8086&DEV_A0D8&SUBSYS_72708086&REV_20\3&11583659&0&80 present=True
 00:10.0 Present=True present=True
@@ -384,6 +634,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:10.6 MaxPayloadSizeSupported= present=False
 00:10.6 MaxReadRequestSize= present=False
 00:10.6 AerCapable= present=False
+00:10.6 DeviceType=PCI present=True
+00:10.6 DeviceTypeRaw=0 present=True
+00:10.6 IsBridge=False present=True
+00:10.6 ExpressSpecVersion= present=False
+00:10.6 InterruptModes=INTx,MSI present=True
+00:10.6 InterruptSupportRaw=3 present=True
+00:10.6 InterruptVectorsMax=1 present=True
+00:10.6 MsiSupported=True present=True
+00:10.6 MsixSupported=False present=True
+00:10.6 SriovCapable= present=False
+00:10.6 SriovStatus= present=False
+00:10.6 SriovSupportRaw= present=False
+00:10.6 AcsSupport= present=False
+00:10.6 AcsSupportRaw= present=False
+00:10.6 AcsCapabilityRegister= present=False
+00:10.6 AriCapable= present=False
+00:10.6 AtsCapable= present=False
+00:10.6 AtomicsCapable= present=False
+00:10.6 BarTypesRaw=256 present=True
+00:10.6 LinkSubStateRaw=0 present=True
+00:10.6 PhysicalSlot= present=False
+00:10.6 LocationPath=PCIROOT(0)#PCI(1006) present=True
+00:10.6 SerialNumber= present=False
+00:10.6 SerialNumberRaw= present=False
+00:10.6 PowerState=D0 present=True
 00:10.6 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:10.6 InstanceId=PCI\VEN_8086&DEV_A0D0&SUBSYS_00491414&REV_20\3&11583659&0&86 present=True
 00:10.6 Present=True present=True
@@ -413,6 +688,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:14.0 MaxPayloadSizeSupported= present=False
 00:14.0 MaxReadRequestSize= present=False
 00:14.0 AerCapable= present=False
+00:14.0 DeviceType=PCI present=True
+00:14.0 DeviceTypeRaw=0 present=True
+00:14.0 IsBridge=False present=True
+00:14.0 ExpressSpecVersion= present=False
+00:14.0 InterruptModes=INTx,MSI present=True
+00:14.0 InterruptSupportRaw=3 present=True
+00:14.0 InterruptVectorsMax=8 present=True
+00:14.0 MsiSupported=True present=True
+00:14.0 MsixSupported=False present=True
+00:14.0 SriovCapable= present=False
+00:14.0 SriovStatus= present=False
+00:14.0 SriovSupportRaw= present=False
+00:14.0 AcsSupport= present=False
+00:14.0 AcsSupportRaw= present=False
+00:14.0 AcsCapabilityRegister= present=False
+00:14.0 AriCapable= present=False
+00:14.0 AtsCapable= present=False
+00:14.0 AtomicsCapable= present=False
+00:14.0 BarTypesRaw=256 present=True
+00:14.0 LinkSubStateRaw=0 present=True
+00:14.0 PhysicalSlot= present=False
+00:14.0 LocationPath=PCIROOT(0)#PCI(1400) present=True
+00:14.0 SerialNumber= present=False
+00:14.0 SerialNumberRaw= present=False
+00:14.0 PowerState=D0 present=True
 00:14.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:14.0 InstanceId=PCI\VEN_8086&DEV_A0ED&SUBSYS_72708086&REV_20\3&11583659&0&A0 present=True
 00:14.0 Present=True present=True
@@ -442,6 +742,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:14.2 MaxPayloadSizeSupported= present=False
 00:14.2 MaxReadRequestSize= present=False
 00:14.2 AerCapable= present=False
+00:14.2 DeviceType=PCI present=True
+00:14.2 DeviceTypeRaw=0 present=True
+00:14.2 IsBridge=False present=True
+00:14.2 ExpressSpecVersion= present=False
+00:14.2 InterruptModes= present=False
+00:14.2 InterruptSupportRaw= present=False
+00:14.2 InterruptVectorsMax= present=False
+00:14.2 MsiSupported= present=False
+00:14.2 MsixSupported= present=False
+00:14.2 SriovCapable= present=False
+00:14.2 SriovStatus= present=False
+00:14.2 SriovSupportRaw= present=False
+00:14.2 AcsSupport= present=False
+00:14.2 AcsSupportRaw= present=False
+00:14.2 AcsCapabilityRegister= present=False
+00:14.2 AriCapable= present=False
+00:14.2 AtsCapable= present=False
+00:14.2 AtomicsCapable= present=False
+00:14.2 BarTypesRaw=512 present=True
+00:14.2 LinkSubStateRaw=0 present=True
+00:14.2 PhysicalSlot= present=False
+00:14.2 LocationPath=PCIROOT(0)#PCI(1402) present=True
+00:14.2 SerialNumber= present=False
+00:14.2 SerialNumberRaw= present=False
+00:14.2 PowerState=D3 present=True
 00:14.2 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:14.2 InstanceId=PCI\VEN_8086&DEV_A0EF&SUBSYS_72708086&REV_20\3&11583659&0&A2 present=True
 00:14.2 Present=True present=True
@@ -471,6 +796,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:15.0 MaxPayloadSizeSupported= present=False
 00:15.0 MaxReadRequestSize= present=False
 00:15.0 AerCapable= present=False
+00:15.0 DeviceType=PCI present=True
+00:15.0 DeviceTypeRaw=0 present=True
+00:15.0 IsBridge=False present=True
+00:15.0 ExpressSpecVersion= present=False
+00:15.0 InterruptModes=INTx present=True
+00:15.0 InterruptSupportRaw=1 present=True
+00:15.0 InterruptVectorsMax= present=False
+00:15.0 MsiSupported=False present=True
+00:15.0 MsixSupported=False present=True
+00:15.0 SriovCapable= present=False
+00:15.0 SriovStatus= present=False
+00:15.0 SriovSupportRaw= present=False
+00:15.0 AcsSupport= present=False
+00:15.0 AcsSupportRaw= present=False
+00:15.0 AcsCapabilityRegister= present=False
+00:15.0 AriCapable= present=False
+00:15.0 AtsCapable= present=False
+00:15.0 AtomicsCapable= present=False
+00:15.0 BarTypesRaw=256 present=True
+00:15.0 LinkSubStateRaw=0 present=True
+00:15.0 PhysicalSlot= present=False
+00:15.0 LocationPath=PCIROOT(0)#PCI(1500) present=True
+00:15.0 SerialNumber= present=False
+00:15.0 SerialNumberRaw= present=False
+00:15.0 PowerState=D3 present=True
 00:15.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:15.0 InstanceId=PCI\VEN_8086&DEV_A0E8&SUBSYS_72708086&REV_20\3&11583659&0&A8 present=True
 00:15.0 Present=True present=True
@@ -500,6 +850,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:15.1 MaxPayloadSizeSupported= present=False
 00:15.1 MaxReadRequestSize= present=False
 00:15.1 AerCapable= present=False
+00:15.1 DeviceType=PCI present=True
+00:15.1 DeviceTypeRaw=0 present=True
+00:15.1 IsBridge=False present=True
+00:15.1 ExpressSpecVersion= present=False
+00:15.1 InterruptModes=INTx present=True
+00:15.1 InterruptSupportRaw=1 present=True
+00:15.1 InterruptVectorsMax= present=False
+00:15.1 MsiSupported=False present=True
+00:15.1 MsixSupported=False present=True
+00:15.1 SriovCapable= present=False
+00:15.1 SriovStatus= present=False
+00:15.1 SriovSupportRaw= present=False
+00:15.1 AcsSupport= present=False
+00:15.1 AcsSupportRaw= present=False
+00:15.1 AcsCapabilityRegister= present=False
+00:15.1 AriCapable= present=False
+00:15.1 AtsCapable= present=False
+00:15.1 AtomicsCapable= present=False
+00:15.1 BarTypesRaw=256 present=True
+00:15.1 LinkSubStateRaw=0 present=True
+00:15.1 PhysicalSlot= present=False
+00:15.1 LocationPath=PCIROOT(0)#PCI(1501) present=True
+00:15.1 SerialNumber= present=False
+00:15.1 SerialNumberRaw= present=False
+00:15.1 PowerState=D3 present=True
 00:15.1 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:15.1 InstanceId=PCI\VEN_8086&DEV_A0E9&SUBSYS_72708086&REV_20\3&11583659&0&A9 present=True
 00:15.1 Present=True present=True
@@ -529,6 +904,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:16.0 MaxPayloadSizeSupported= present=False
 00:16.0 MaxReadRequestSize= present=False
 00:16.0 AerCapable= present=False
+00:16.0 DeviceType=PCI present=True
+00:16.0 DeviceTypeRaw=0 present=True
+00:16.0 IsBridge=False present=True
+00:16.0 ExpressSpecVersion= present=False
+00:16.0 InterruptModes=INTx,MSI present=True
+00:16.0 InterruptSupportRaw=3 present=True
+00:16.0 InterruptVectorsMax=1 present=True
+00:16.0 MsiSupported=True present=True
+00:16.0 MsixSupported=False present=True
+00:16.0 SriovCapable= present=False
+00:16.0 SriovStatus= present=False
+00:16.0 SriovSupportRaw= present=False
+00:16.0 AcsSupport= present=False
+00:16.0 AcsSupportRaw= present=False
+00:16.0 AcsCapabilityRegister= present=False
+00:16.0 AriCapable= present=False
+00:16.0 AtsCapable= present=False
+00:16.0 AtomicsCapable= present=False
+00:16.0 BarTypesRaw=256 present=True
+00:16.0 LinkSubStateRaw=0 present=True
+00:16.0 PhysicalSlot= present=False
+00:16.0 LocationPath=PCIROOT(0)#PCI(1600) present=True
+00:16.0 SerialNumber= present=False
+00:16.0 SerialNumberRaw= present=False
+00:16.0 PowerState=D0 present=True
 00:16.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:16.0 InstanceId=PCI\VEN_8086&DEV_A0E0&SUBSYS_72708086&REV_20\3&11583659&0&B0 present=True
 00:16.0 Present=True present=True
@@ -558,6 +958,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:1c.0 MaxPayloadSizeSupported= present=False
 00:1c.0 MaxReadRequestSize= present=False
 00:1c.0 AerCapable=False present=True
+00:1c.0 DeviceType=PCIe Root Port present=True
+00:1c.0 DeviceTypeRaw=8 present=True
+00:1c.0 IsBridge=True present=True
+00:1c.0 ExpressSpecVersion=2 present=True
+00:1c.0 InterruptModes= present=False
+00:1c.0 InterruptSupportRaw= present=False
+00:1c.0 InterruptVectorsMax= present=False
+00:1c.0 MsiSupported= present=False
+00:1c.0 MsixSupported= present=False
+00:1c.0 SriovCapable= present=False
+00:1c.0 SriovStatus= present=False
+00:1c.0 SriovSupportRaw= present=False
+00:1c.0 AcsSupport=present present=True
+00:1c.0 AcsSupportRaw=0 present=True
+00:1c.0 AcsCapabilityRegister=31 present=True
+00:1c.0 AriCapable=True present=True
+00:1c.0 AtsCapable=False present=True
+00:1c.0 AtomicsCapable= present=False
+00:1c.0 BarTypesRaw= present=False
+00:1c.0 LinkSubStateRaw=15 present=True
+00:1c.0 PhysicalSlot= present=False
+00:1c.0 LocationPath=PCIROOT(0)#PCI(1C00) present=True
+00:1c.0 SerialNumber= present=False
+00:1c.0 SerialNumberRaw= present=False
+00:1c.0 PowerState=D0 present=True
 00:1c.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:1c.0 InstanceId=PCI\VEN_8086&DEV_A0BD&SUBSYS_00000000&REV_20\3&11583659&0&E0 present=True
 00:1c.0 Present=True present=True
@@ -587,6 +1012,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:1d.0 MaxPayloadSizeSupported= present=False
 00:1d.0 MaxReadRequestSize= present=False
 00:1d.0 AerCapable=False present=True
+00:1d.0 DeviceType=PCIe Root Port present=True
+00:1d.0 DeviceTypeRaw=8 present=True
+00:1d.0 IsBridge=True present=True
+00:1d.0 ExpressSpecVersion=2 present=True
+00:1d.0 InterruptModes= present=False
+00:1d.0 InterruptSupportRaw= present=False
+00:1d.0 InterruptVectorsMax= present=False
+00:1d.0 MsiSupported= present=False
+00:1d.0 MsixSupported= present=False
+00:1d.0 SriovCapable= present=False
+00:1d.0 SriovStatus= present=False
+00:1d.0 SriovSupportRaw= present=False
+00:1d.0 AcsSupport=present present=True
+00:1d.0 AcsSupportRaw=0 present=True
+00:1d.0 AcsCapabilityRegister=31 present=True
+00:1d.0 AriCapable=True present=True
+00:1d.0 AtsCapable=False present=True
+00:1d.0 AtomicsCapable= present=False
+00:1d.0 BarTypesRaw= present=False
+00:1d.0 LinkSubStateRaw=15 present=True
+00:1d.0 PhysicalSlot= present=False
+00:1d.0 LocationPath=PCIROOT(0)#PCI(1D00) present=True
+00:1d.0 SerialNumber= present=False
+00:1d.0 SerialNumberRaw= present=False
+00:1d.0 PowerState=D3 present=True
 00:1d.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:1d.0 InstanceId=PCI\VEN_8086&DEV_A0B0&SUBSYS_72708086&REV_20\3&11583659&0&E8 present=True
 00:1d.0 Present=True present=True
@@ -616,6 +1066,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:1e.0 MaxPayloadSizeSupported= present=False
 00:1e.0 MaxReadRequestSize= present=False
 00:1e.0 AerCapable= present=False
+00:1e.0 DeviceType=PCI present=True
+00:1e.0 DeviceTypeRaw=0 present=True
+00:1e.0 IsBridge=False present=True
+00:1e.0 ExpressSpecVersion= present=False
+00:1e.0 InterruptModes=INTx present=True
+00:1e.0 InterruptSupportRaw=1 present=True
+00:1e.0 InterruptVectorsMax= present=False
+00:1e.0 MsiSupported=False present=True
+00:1e.0 MsixSupported=False present=True
+00:1e.0 SriovCapable= present=False
+00:1e.0 SriovStatus= present=False
+00:1e.0 SriovSupportRaw= present=False
+00:1e.0 AcsSupport= present=False
+00:1e.0 AcsSupportRaw= present=False
+00:1e.0 AcsCapabilityRegister= present=False
+00:1e.0 AriCapable= present=False
+00:1e.0 AtsCapable= present=False
+00:1e.0 AtomicsCapable= present=False
+00:1e.0 BarTypesRaw=256 present=True
+00:1e.0 LinkSubStateRaw=0 present=True
+00:1e.0 PhysicalSlot= present=False
+00:1e.0 LocationPath=PCIROOT(0)#PCI(1E00) present=True
+00:1e.0 SerialNumber= present=False
+00:1e.0 SerialNumberRaw= present=False
+00:1e.0 PowerState=D0 present=True
 00:1e.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:1e.0 InstanceId=PCI\VEN_8086&DEV_A0A8&SUBSYS_72708086&REV_20\3&11583659&0&F0 present=True
 00:1e.0 Present=True present=True
@@ -645,6 +1120,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:1f.0 MaxPayloadSizeSupported= present=False
 00:1f.0 MaxReadRequestSize= present=False
 00:1f.0 AerCapable= present=False
+00:1f.0 DeviceType=PCI present=True
+00:1f.0 DeviceTypeRaw=0 present=True
+00:1f.0 IsBridge=False present=True
+00:1f.0 ExpressSpecVersion= present=False
+00:1f.0 InterruptModes= present=False
+00:1f.0 InterruptSupportRaw= present=False
+00:1f.0 InterruptVectorsMax= present=False
+00:1f.0 MsiSupported= present=False
+00:1f.0 MsixSupported= present=False
+00:1f.0 SriovCapable= present=False
+00:1f.0 SriovStatus= present=False
+00:1f.0 SriovSupportRaw= present=False
+00:1f.0 AcsSupport= present=False
+00:1f.0 AcsSupportRaw= present=False
+00:1f.0 AcsCapabilityRegister= present=False
+00:1f.0 AriCapable= present=False
+00:1f.0 AtsCapable= present=False
+00:1f.0 AtomicsCapable= present=False
+00:1f.0 BarTypesRaw=0 present=True
+00:1f.0 LinkSubStateRaw=0 present=True
+00:1f.0 PhysicalSlot= present=False
+00:1f.0 LocationPath=PCIROOT(0)#PCI(1F00) present=True
+00:1f.0 SerialNumber= present=False
+00:1f.0 SerialNumberRaw= present=False
+00:1f.0 PowerState=D0 present=True
 00:1f.0 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:1f.0 InstanceId=PCI\VEN_8086&DEV_A082&SUBSYS_72708086&REV_20\3&11583659&0&F8 present=True
 00:1f.0 Present=True present=True
@@ -674,6 +1174,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:1f.3 MaxPayloadSizeSupported= present=False
 00:1f.3 MaxReadRequestSize= present=False
 00:1f.3 AerCapable= present=False
+00:1f.3 DeviceType=PCI present=True
+00:1f.3 DeviceTypeRaw=0 present=True
+00:1f.3 IsBridge=False present=True
+00:1f.3 ExpressSpecVersion= present=False
+00:1f.3 InterruptModes=INTx,MSI present=True
+00:1f.3 InterruptSupportRaw=3 present=True
+00:1f.3 InterruptVectorsMax=1 present=True
+00:1f.3 MsiSupported=True present=True
+00:1f.3 MsixSupported=False present=True
+00:1f.3 SriovCapable= present=False
+00:1f.3 SriovStatus= present=False
+00:1f.3 SriovSupportRaw= present=False
+00:1f.3 AcsSupport= present=False
+00:1f.3 AcsSupportRaw= present=False
+00:1f.3 AcsCapabilityRegister= present=False
+00:1f.3 AriCapable= present=False
+00:1f.3 AtsCapable= present=False
+00:1f.3 AtomicsCapable= present=False
+00:1f.3 BarTypesRaw=512 present=True
+00:1f.3 LinkSubStateRaw=0 present=True
+00:1f.3 PhysicalSlot= present=False
+00:1f.3 LocationPath=PCIROOT(0)#PCI(1F03) present=True
+00:1f.3 SerialNumber= present=False
+00:1f.3 SerialNumberRaw= present=False
+00:1f.3 PowerState=D0 present=True
 00:1f.3 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:1f.3 InstanceId=PCI\VEN_8086&DEV_A0C8&SUBSYS_72708086&REV_20\3&11583659&0&FB present=True
 00:1f.3 Present=True present=True
@@ -703,6 +1228,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 00:1f.5 MaxPayloadSizeSupported= present=False
 00:1f.5 MaxReadRequestSize= present=False
 00:1f.5 AerCapable= present=False
+00:1f.5 DeviceType=PCI present=True
+00:1f.5 DeviceTypeRaw=0 present=True
+00:1f.5 IsBridge=False present=True
+00:1f.5 ExpressSpecVersion= present=False
+00:1f.5 InterruptModes= present=False
+00:1f.5 InterruptSupportRaw= present=False
+00:1f.5 InterruptVectorsMax= present=False
+00:1f.5 MsiSupported= present=False
+00:1f.5 MsixSupported= present=False
+00:1f.5 SriovCapable= present=False
+00:1f.5 SriovStatus= present=False
+00:1f.5 SriovSupportRaw= present=False
+00:1f.5 AcsSupport= present=False
+00:1f.5 AcsSupportRaw= present=False
+00:1f.5 AcsCapabilityRegister= present=False
+00:1f.5 AriCapable= present=False
+00:1f.5 AtsCapable= present=False
+00:1f.5 AtomicsCapable= present=False
+00:1f.5 BarTypesRaw=256 present=True
+00:1f.5 LinkSubStateRaw=0 present=True
+00:1f.5 PhysicalSlot= present=False
+00:1f.5 LocationPath=PCIROOT(0)#PCI(1F05) present=True
+00:1f.5 SerialNumber= present=False
+00:1f.5 SerialNumberRaw= present=False
+00:1f.5 PowerState=D3 present=True
 00:1f.5 ParentInstanceId=ACPI\PNP0A08\0 present=True
 00:1f.5 InstanceId=PCI\VEN_8086&DEV_A0A4&SUBSYS_72708086&REV_20\3&11583659&0&FD present=True
 00:1f.5 Present=True present=True
@@ -732,6 +1282,31 @@ f3:00.0 0302: 10de:25a0 (rev a1)
 01:00.0 MaxPayloadSizeSupported=512 present=True
 01:00.0 MaxReadRequestSize=512 present=True
 01:00.0 AerCapable=True present=True
+01:00.0 DeviceType=PCIe Endpoint present=True
+01:00.0 DeviceTypeRaw=2 present=True
+01:00.0 IsBridge=False present=True
+01:00.0 ExpressSpecVersion=2 present=True
+01:00.0 InterruptModes=INTx,MSI,MSI-X present=True
+01:00.0 InterruptSupportRaw=7 present=True
+01:00.0 InterruptVectorsMax=33 present=True
+01:00.0 MsiSupported=True present=True
+01:00.0 MsixSupported=True present=True
+01:00.0 SriovCapable= present=False
+01:00.0 SriovStatus= present=False
+01:00.0 SriovSupportRaw= present=False
+01:00.0 AcsSupport=missing present=True
+01:00.0 AcsSupportRaw=2 present=True
+01:00.0 AcsCapabilityRegister=0 present=True
+01:00.0 AriCapable=False present=True
+01:00.0 AtsCapable=False present=True
+01:00.0 AtomicsCapable=False present=True
+01:00.0 BarTypesRaw=768 present=True
+01:00.0 LinkSubStateRaw=15 present=True
+01:00.0 PhysicalSlot= present=False
+01:00.0 LocationPath=PCIROOT(0)#PCI(0600)#PCI(0000) present=True
+01:00.0 SerialNumber=00-00-00-00-00-00-00-00 present=True
+01:00.0 SerialNumberRaw=0 present=True
+01:00.0 PowerState=D0 present=True
 01:00.0 ParentInstanceId=PCI\VEN_8086&DEV_9A09&SUBSYS_72708086&REV_01\3&11583659&0&30 present=True
 01:00.0 InstanceId=PCI\VEN_1C5C&DEV_174A&SUBSYS_174A1C5C&REV_00\4&391CC7C&0&0030 present=True
 01:00.0 Present=True present=True
@@ -761,6 +1336,31 @@ f2:00.0 MaxPayloadSize=128 present=True
 f2:00.0 MaxPayloadSizeSupported=128 present=True
 f2:00.0 MaxReadRequestSize=128 present=True
 f2:00.0 AerCapable=True present=True
+f2:00.0 DeviceType=PCIe Endpoint present=True
+f2:00.0 DeviceTypeRaw=2 present=True
+f2:00.0 IsBridge=False present=True
+f2:00.0 ExpressSpecVersion=2 present=True
+f2:00.0 InterruptModes=INTx,MSI,MSI-X present=True
+f2:00.0 InterruptSupportRaw=7 present=True
+f2:00.0 InterruptVectorsMax=16 present=True
+f2:00.0 MsiSupported=True present=True
+f2:00.0 MsixSupported=True present=True
+f2:00.0 SriovCapable= present=False
+f2:00.0 SriovStatus= present=False
+f2:00.0 SriovSupportRaw= present=False
+f2:00.0 AcsSupport=missing present=True
+f2:00.0 AcsSupportRaw=2 present=True
+f2:00.0 AcsCapabilityRegister=0 present=True
+f2:00.0 AriCapable=False present=True
+f2:00.0 AtsCapable=False present=True
+f2:00.0 AtomicsCapable=False present=True
+f2:00.0 BarTypesRaw=256 present=True
+f2:00.0 LinkSubStateRaw=15 present=True
+f2:00.0 PhysicalSlot=5 present=True
+f2:00.0 LocationPath=PCIROOT(0)#PCI(1C00)#PCI(0000) present=True
+f2:00.0 SerialNumber= present=False
+f2:00.0 SerialNumberRaw= present=False
+f2:00.0 PowerState=D0 present=True
 f2:00.0 ParentInstanceId=PCI\VEN_8086&DEV_A0BD&SUBSYS_00000000&REV_20\3&11583659&0&E0 present=True
 f2:00.0 InstanceId=PCI\VEN_8086&DEV_2723&SUBSYS_00808086&REV_1A\4&328243D9&0&00E0 present=True
 f2:00.0 Present=True present=True
@@ -790,6 +1390,31 @@ f3:00.0 MaxPayloadSize=256 present=True
 f3:00.0 MaxPayloadSizeSupported=256 present=True
 f3:00.0 MaxReadRequestSize=512 present=True
 f3:00.0 AerCapable=True present=True
+f3:00.0 DeviceType=PCIe Endpoint present=True
+f3:00.0 DeviceTypeRaw=2 present=True
+f3:00.0 IsBridge=False present=True
+f3:00.0 ExpressSpecVersion=2 present=True
+f3:00.0 InterruptModes=INTx,MSI present=True
+f3:00.0 InterruptSupportRaw=3 present=True
+f3:00.0 InterruptVectorsMax=1 present=True
+f3:00.0 MsiSupported=True present=True
+f3:00.0 MsixSupported=False present=True
+f3:00.0 SriovCapable= present=False
+f3:00.0 SriovStatus= present=False
+f3:00.0 SriovSupportRaw= present=False
+f3:00.0 AcsSupport=missing present=True
+f3:00.0 AcsSupportRaw=2 present=True
+f3:00.0 AcsCapabilityRegister=0 present=True
+f3:00.0 AriCapable=False present=True
+f3:00.0 AtsCapable=False present=True
+f3:00.0 AtomicsCapable=False present=True
+f3:00.0 BarTypesRaw=16843009 present=True
+f3:00.0 LinkSubStateRaw=15 present=True
+f3:00.0 PhysicalSlot= present=False
+f3:00.0 LocationPath=PCIROOT(0)#PCI(1D00)#PCI(0000) present=True
+f3:00.0 SerialNumber= present=False
+f3:00.0 SerialNumberRaw= present=False
+f3:00.0 PowerState=D3 present=True
 f3:00.0 ParentInstanceId=PCI\VEN_8086&DEV_A0B0&SUBSYS_72708086&REV_20\3&11583659&0&E8 present=True
 f3:00.0 InstanceId=PCI\VEN_10DE&DEV_25A0&SUBSYS_00541414&REV_A1\4&32093AAF&0&00E8 present=True
 f3:00.0 Present=True present=True

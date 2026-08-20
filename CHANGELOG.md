@@ -8,6 +8,39 @@ object shape may still change between minors (and says so here when it does).
 ## [Unreleased]
 
 ### Added
+- **Device type** (`DeviceType`, `DeviceTypeRaw`, `IsBridge`) from
+  `DEVPKEY_PciDevice_DeviceType`: root port, upstream/downstream switch port,
+  endpoint, root-complex integrated endpoint, conventional PCI. `-v` prints
+  `Type:`; `-t` tags bridges (`[root port]`, `[upstream port]`,
+  `[downstream port]`); a device that reports no link now says why when the
+  type explains it (integrated endpoint, conventional PCI).
+- **Capability presence** on one `-vv` line — `Capabilities: AER, MSI, MSI-X
+  (33 vectors), SR-IOV, ARI, ATS, AtomicOps` — from `InterruptSupport`,
+  `InterruptMessageMaximum`, `SriovSupport` (reported only where the
+  capability exists; value is a status, `SriovStatus`), `AriSupport`,
+  `AtsSupport`, `AtomicsSupported`; plus `ExpressSpecVersion`,
+  `AcsCapabilityRegister`, `BarTypesRaw`, `LinkSubStateRaw` as attributes.
+  Presence only; contents still need config space, and `-vvv` says so.
+- **`ACS: present | not needed | missing`** on its own `-vv` line
+  (`AcsSupport`), with the three values verified against the ACS capability
+  register on real hardware.
+- A failed WMI query is reported as such (exit 70) instead of rendering as a
+  machine with no PCI devices.
+- `Subsystem:` is omitted for `0000:0000` instead of printing "Vendor 0000".
+- A zero Device Serial Number is marked "(capability present, not populated)".
+- `DOWNTRAINED (speed, width)` is one marker; the power-state note is its own
+  line.
+- **Physical slot** (`PhysicalSlot`, from `DEVPKEY_Device_UINumber`, printed
+  as lspci's `Physical Slot:`), **location path** (`LocationPath`,
+  `PCIROOT(0)#PCI(1C00)#PCI(0000)`), and **device serial number**
+  (`SerialNumber`, the DSN capability, `00-11-22-33-44-55-66-77`).
+- **Power state** (`PowerState`, the most recent D-state from
+  `DEVPKEY_Device_PowerData`): printed in `-vv`, and appended to a
+  `DOWNTRAINED` flag when the device is in D1–D3 — *"device in D3 -- likely
+  idle power management, not a fault"* — which is the README's own GPU
+  example, now explained by the tool.
+- The property fetch asks for 17 more DEVPKEYs; measured at ~+300 ms on a
+  24-device laptop (each key ~1.4 ms per device).
 - `-Json` envelope carries `schemaVersion` (1), `winlspciVersion`,
   `generatedAt` (UTC) and `computerName`. Additive changes keep the schema
   version; a rename or change of meaning bumps it.

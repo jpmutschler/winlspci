@@ -9,7 +9,13 @@ $script:AttributeNames = @(
     'LinkStateReported', 'LinkSpeed', 'LinkSpeedRaw', 'LinkWidth',
     'MaxLinkSpeed', 'MaxLinkSpeedRaw', 'MaxLinkWidth', 'Downtrained',
     'MaxPayloadSize', 'MaxPayloadSizeSupported', 'MaxReadRequestSize',
-    'AerCapable', 'ParentInstanceId', 'InstanceId', 'Present'
+    'AerCapable',
+    'DeviceType', 'DeviceTypeRaw', 'IsBridge', 'ExpressSpecVersion',
+    'InterruptModes', 'InterruptSupportRaw', 'InterruptVectorsMax', 'MsiSupported', 'MsixSupported',
+    'SriovCapable', 'SriovStatus', 'SriovSupportRaw', 'AcsSupport', 'AcsSupportRaw', 'AcsCapabilityRegister',
+    'AriCapable', 'AtsCapable', 'AtomicsCapable', 'BarTypesRaw', 'LinkSubStateRaw',
+    'PhysicalSlot', 'LocationPath', 'SerialNumber', 'SerialNumberRaw', 'PowerState',
+    'ParentInstanceId', 'InstanceId', 'Present'
 )
 
 
@@ -56,6 +62,10 @@ function Get-PciDevice {
     # took. Under a test fixture both come from the recording instead.
     $entities = @(Get-PciEntity -VendorId $filterVendor)
 
+    $script:LastBagError = $null
+    $bagsFetched = 0
+    $bagsPopulated = 0
+
     foreach ($pnp in $entities) {
         $instanceId = $pnp.PNPDeviceID
         if ($instanceId -notmatch 'VEN_([0-9A-Fa-f]{4})&DEV_([0-9A-Fa-f]{4})') { continue }
@@ -82,6 +92,15 @@ function Get-PciDevice {
         if ($instanceId -match 'REV_([0-9A-Fa-f]{2})') { $rev = $Matches[1].ToLower() }
 
         $bag = Get-DevicePropertyBag $pnp
+        $bagsFetched++
+        if ($bag.Count -gt 0) { $bagsPopulated++ }
+        # Every bag empty AND a CIM error seen: the property fetch is broken
+        # (a rejected DEVPKEY, WMI refusing). Say so rather than listing
+        # devices with no slot and no link state. Checked after the first few
+        # so a single bad device does not trip it.
+        if ($bagsFetched -ge 3 -and $bagsPopulated -eq 0 -and $script:LastBagError) {
+            throw "PCI enumeration failed: the property fetch (GetDeviceProperties) failed for every device ($($script:LastBagError)). Either WMI is refusing, or a DEVPKEY name the module asks for is not valid on this Windows build."
+        }
 
         # Presence: DEVPKEY_Device_IsPresent is explicit; the older
         # Status -eq 'Unknown' heuristic is the fallback. A phantom device
@@ -165,6 +184,43 @@ function Get-PciDevice {
 
         $downtrain = Get-LinkDowntrainReason $curSpeed $maxSpeed $curWidth $maxWidth
 
+        # -- type, capability presence, location, power (all $null when absent)
+        $typeRaw = Get-BagValue $bag 'DEVPKEY_PciDevice_DeviceType'
+        $typeName = $null; $isBridge = $null
+        if ($null -ne $typeRaw) {
+            if ($script:DeviceTypeName.ContainsKey([int]$typeRaw)) { $typeName = $script:DeviceTypeName[[int]$typeRaw] }
+            $isBridge = ($script:BridgeDeviceTypes -contains [int]$typeRaw)
+        }
+        $intRaw = Get-BagValue $bag 'DEVPKEY_PciDevice_InterruptSupport'
+        $intList = ConvertFrom-InterruptSupport $intRaw
+        $intModes = $null; $msi = $null; $msix = $null
+        if ($null -ne $intList) {
+            $msi = ($intList -contains 'MSI'); $msix = ($intList -contains 'MSI-X')
+            # A string, not an array: every consumer (-Delimited, -Match, -vvv)
+            # then sees "INTx,MSI,MSI-X"; 'none' keeps a reported 0 distinct
+            # from absent.
+            $intModes = 'none'
+            if ($intList.Count -gt 0) { $intModes = ($intList -join ',') }
+        }
+        # The key is reported only for devices with the SR-IOV capability; its
+        # value is a status (0 = ok). Capable = key present, never value != 0.
+        $sriovRaw = Get-BagValue $bag 'DEVPKEY_PciDevice_SriovSupport'
+        $sriov = $null; $sriovStatus = $null
+        if ($null -ne $sriovRaw) {
+            $sriov = $true
+            if ($script:SriovStatusName.ContainsKey([int]$sriovRaw)) { $sriovStatus = $script:SriovStatusName[[int]$sriovRaw] }
+            else { $sriovStatus = "status $sriovRaw" }
+        }
+        $acsRaw = Get-BagValue $bag 'DEVPKEY_PciDevice_AcsSupport'
+        $acsText = $null
+        if ($null -ne $acsRaw -and $script:AcsSupportName.ContainsKey([int]$acsRaw)) { $acsText = $script:AcsSupportName[[int]$acsRaw] }
+        $toBool = { param($v) if ($null -eq $v) { $null } else { [bool]$v } }
+        $powerState = ConvertFrom-PowerData (Get-BagValue $bag 'DEVPKEY_Device_PowerData')
+        $locPaths = Get-BagValue $bag 'DEVPKEY_Device_LocationPaths'
+        $locPath = $null
+        if ($null -ne $locPaths) { $locPath = "$(@($locPaths)[0])" }
+        $serialRaw = Get-BagValue $bag 'DEVPKEY_PciDevice_SerialNumber'
+
         [pscustomobject]@{
             PSTypeName       = 'WinLspci.PciDevice'
             Slot             = $bdf
@@ -203,9 +259,46 @@ function Get-PciDevice {
             MaxPayloadSizeSupported = $mpsMaxBytes
             MaxReadRequestSize = $mrrs
             AerCapable       = Get-BagValue $bag 'DEVPKEY_PciDevice_AERCapabilityPresent'
+            # What kind of device (root port, switch port, endpoint...). The
+            # most useful single byte Windows exposes for topology work.
+            DeviceType       = $typeName
+            DeviceTypeRaw    = $typeRaw
+            IsBridge         = $isBridge
+            ExpressSpecVersion = Get-BagValue $bag 'DEVPKEY_PciDevice_ExpressSpecVersion'
+            # Capability PRESENCE, not contents: that still needs config space.
+            InterruptModes   = $intModes
+            InterruptSupportRaw = $intRaw
+            InterruptVectorsMax = Get-BagValue $bag 'DEVPKEY_PciDevice_InterruptMessageMaximum'
+            MsiSupported     = $msi
+            MsixSupported    = $msix
+            SriovCapable     = $sriov
+            SriovStatus      = $sriovStatus
+            SriovSupportRaw  = $sriovRaw
+            AcsSupport       = $acsText
+            AcsSupportRaw    = $acsRaw
+            AcsCapabilityRegister = Get-BagValue $bag 'DEVPKEY_PciDevice_AcsCapabilityRegister'
+            AriCapable       = & $toBool (Get-BagValue $bag 'DEVPKEY_PciDevice_AriSupport')
+            AtsCapable       = & $toBool (Get-BagValue $bag 'DEVPKEY_PciDevice_AtsSupport')
+            AtomicsCapable   = & $toBool (Get-BagValue $bag 'DEVPKEY_PciDevice_AtomicsSupported')
+            BarTypesRaw      = Get-BagValue $bag 'DEVPKEY_PciDevice_BarTypes'
+            LinkSubStateRaw  = Get-BagValue $bag 'DEVPKEY_PciDevice_SupportedLinkSubState'
+            # Where it is: chassis slot number (lspci "Physical Slot") and the
+            # firmware location path.
+            PhysicalSlot     = Get-BagValue $bag 'DEVPKEY_Device_UINumber'
+            LocationPath     = $locPath
+            SerialNumber     = Format-DeviceSerialNumber $serialRaw
+            SerialNumberRaw  = $serialRaw
+            # Most recent D-state. D3 next to DOWNTRAINED usually means idle
+            # link power management, not a fault.
+            PowerState       = $powerState
             ParentInstanceId = Get-BagValue $bag 'DEVPKEY_Device_Parent'
             InstanceId       = $instanceId
             Present          = $isPresent
         }
+    }
+
+    # Fewer than three devices and all of them failed: same verdict.
+    if ($bagsFetched -gt 0 -and $bagsPopulated -eq 0 -and $script:LastBagError) {
+        throw "PCI enumeration failed: the property fetch (GetDeviceProperties) failed for every device ($($script:LastBagError)). Either WMI is refusing, or a DEVPKEY name the module asks for is not valid on this Windows build."
     }
 }

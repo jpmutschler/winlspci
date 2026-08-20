@@ -23,7 +23,122 @@ $script:WantedKeys = @(
     'DEVPKEY_PciDevice_MaxReadRequestSize'
     'DEVPKEY_PciDevice_AERCapabilityPresent'
     'DEVPKEY_Device_IsPresent'
+    # -- 0.5.0: type, capability presence, location, power. Measured at
+    #    ~+300ms for 24 devices (fetch 660 -> 950ms); each key is ~1.4ms per
+    #    device. Every one below was verified to populate on real hardware;
+    #    keys that Windows rejects as invalid (Label, ExtendedConfigAvailable,
+    #    SubsystemVendorID) abort the WHOLE call, so add nothing unverified.
+    'DEVPKEY_PciDevice_DeviceType'
+    'DEVPKEY_PciDevice_ExpressSpecVersion'
+    'DEVPKEY_PciDevice_InterruptSupport'
+    'DEVPKEY_PciDevice_InterruptMessageMaximum'
+    'DEVPKEY_PciDevice_SriovSupport'
+    'DEVPKEY_PciDevice_AcsSupport'
+    'DEVPKEY_PciDevice_AcsCapabilityRegister'
+    'DEVPKEY_PciDevice_AriSupport'
+    'DEVPKEY_PciDevice_AtsSupport'
+    'DEVPKEY_PciDevice_AtomicsSupported'
+    'DEVPKEY_PciDevice_BarTypes'
+    'DEVPKEY_PciDevice_SupportedLinkSubState'
+    'DEVPKEY_PciDevice_SerialNumber'
+    'DEVPKEY_Device_UINumber'
+    'DEVPKEY_Device_LocationPaths'
+    'DEVPKEY_Device_PowerData'
 )
+
+# DEVPKEY_PciDevice_DeviceType (devpkey.h DevProp_PciDevice_DeviceType_*).
+# Spelled out, like the link-speed map: a mis-numbered enum is an invisible
+# error. 6..13 are the bridge types; Format-PciTree labels those.
+$script:DeviceTypeName = @{
+    0  = 'PCI';                        1  = 'PCI-X'
+    2  = 'PCIe Endpoint';              3  = 'PCIe Legacy Endpoint'
+    4  = 'PCIe Root Complex Integrated Endpoint'
+    5  = 'PCIe (treated as PCI)'
+    6  = 'PCI bridge';                 7  = 'PCI-X bridge'
+    8  = 'PCIe Root Port';             9  = 'PCIe Upstream Switch Port'
+    10 = 'PCIe Downstream Switch Port'
+    11 = 'PCIe-to-PCI-X bridge';       12 = 'PCI-X-to-PCIe bridge'
+    13 = 'PCIe bridge (treated as PCI)'
+    14 = 'PCIe Event Collector'
+}
+$script:BridgeDeviceTypes = @(6, 7, 8, 9, 10, 11, 12, 13)
+
+# DEVPKEY_PciDevice_AcsSupport: 0 = present, 1 = not needed, 2 = missing.
+# Verified against hardware, not assumed: on the author's laptop every
+# device with raw 0 carries a populated ACS capability register (0x1f), every
+# device with raw 2 has register 0 (no ACS capability), and raw 1 is the two
+# root-complex integrated endpoints, which have no peer-to-peer path to
+# isolate. An earlier map read 0 as "not supported", which would have told
+# someone reasoning about DMA isolation the opposite of the truth; a fixture
+# test pins all three values now. Rendered with the word, never a bare number.
+$script:AcsSupportName = @{ 0 = 'present'; 1 = 'not needed'; 2 = 'missing' }
+
+# DEVPKEY_PciDevice_SriovSupport is reported only for devices that carry the
+# SR-IOV capability (here: the Xe iGPU), and its value is a STATUS: 0 = ok,
+# non-zero = a reason virtual functions cannot be enabled. The capability is
+# the key's presence; the status is its value.
+$script:SriovStatusName = @{ 0 = 'ok' }
+
+# DEVICE_POWER_STATE, as found in CM_POWER_DATA.PD_MostRecentPowerState.
+$script:DevicePowerStateName = @{ 0 = $null; 1 = 'D0'; 2 = 'D1'; 3 = 'D2'; 4 = 'D3' }
+
+
+function ConvertFrom-InterruptSupport {
+    <#
+    .SYNOPSIS
+      DEVPKEY_PciDevice_InterruptSupport bitfield -> names.
+    .DESCRIPTION
+      1 = line-based (INTx), 2 = MSI, 4 = MSI-X. Returns a string[] in that
+      order, or @() when the value is 0, or $null for $null.
+    #>
+    param($Value)
+    if ($null -eq $Value) { return $null }
+    $v = [int]$Value
+    $modes = @()
+    if ($v -band 1) { $modes += 'INTx' }
+    if ($v -band 2) { $modes += 'MSI' }
+    if ($v -band 4) { $modes += 'MSI-X' }
+    return ,$modes
+}
+
+
+function ConvertFrom-PowerData {
+    <#
+    .SYNOPSIS
+      The most recent D-state out of a DEVPKEY_Device_PowerData blob.
+    .DESCRIPTION
+      CM_POWER_DATA (cfgmgr32.h) arrives as a byte array:
+        0..3   PD_Size (56 on current Windows)
+        4..7   PD_MostRecentPowerState  (DEVICE_POWER_STATE: 1 = D0 .. 4 = D3)
+        8..11  PD_Capabilities
+        ...
+      Only the state is decoded. Bounds-checked: a short or odd blob yields
+      $null, never an exception -- this is the module's first binary parse and
+      it runs once per device. "Most recent" is a snapshot; the README says so.
+    #>
+    param($Bytes)
+    if ($null -eq $Bytes) { return $null }
+    $b = @($Bytes)
+    if ($b.Count -lt 8) { return $null }
+    try {
+        $state = [int]$b[4] -bor ([int]$b[5] -shl 8) -bor ([int]$b[6] -shl 16) -bor ([int]$b[7] -shl 24)
+    } catch { return $null }
+    if ($script:DevicePowerStateName.ContainsKey($state)) { return $script:DevicePowerStateName[$state] }
+    return $null
+}
+
+
+function Format-DeviceSerialNumber {
+    <#
+    .SYNOPSIS
+      A 64-bit Device Serial Number as lspci prints it: 00-11-22-33-44-55-66-77.
+    #>
+    param($Value)
+    if ($null -eq $Value) { return $null }
+    try { $u = [uint64]$Value } catch { return $null }
+    $parts = foreach ($i in 7..0) { '{0:x2}' -f (($u -shr (8 * $i)) -band 0xff) }
+    return ($parts -join '-')
+}
 
 
 # ---------------------------------------------------------------- fixtures
@@ -38,6 +153,7 @@ $script:WantedKeys = @(
 # one that happened to have them. Test-only: set through the module scope,
 # never from the CLI.
 $script:Fixture = $null
+$script:LastBagError = $null
 
 function Set-PciFixture {
     <#
@@ -106,7 +222,15 @@ function Get-PciEntity {
     }
     $query = 'SELECT DeviceID,PNPDeviceID,Name,Service,Status,ConfigManagerErrorCode,HardwareID ' +
              "FROM Win32_PnPEntity WHERE $where"
-    return @(Get-CimInstance -Query $query -ErrorAction SilentlyContinue)
+    # A failed query must not look like an empty machine. Under load the WMI
+    # provider can refuse for a moment; with -ErrorAction SilentlyContinue
+    # that rendered as "no PCI devices enumerated", exit 0. Throw instead;
+    # the CLI reports it and exits 70.
+    try {
+        return @(Get-CimInstance -Query $query -ErrorAction Stop)
+    } catch {
+        throw "PCI enumeration failed: the WMI query for Win32_PnPEntity did not complete ($($_.Exception.Message)). This is a Windows/WMI error, not an empty machine -- retry, or check the Winmgmt service."
+    }
 }
 
 
@@ -150,6 +274,12 @@ function Get-DevicePropertyBag {
             -Arguments @{ devicePropertyKeys = $script:WantedKeys } `
             -ErrorAction Stop
     } catch {
+        # One device failing is tolerable (an empty bag renders as "not
+        # reported"); EVERY device failing is a broken fetch -- a rejected
+        # DEVPKEY name, or WMI refusing -- and must not render as 24 devices
+        # at ??:??.? with no link state. Remember the error; Get-PciDevice
+        # throws if no bag at all came back populated.
+        $script:LastBagError = $_.Exception.Message
         return $bag
     }
 
@@ -202,7 +332,7 @@ function ConvertTo-Bdf {
 
     $domain = 0; $bus = $null; $dev = $null; $fun = $null
     # Positional, not keyed on the English words: pci.sys localises the string
-    # ("PCI-Bus 0, Gerät 2, Funktion 0" on a German system). Three integers in
+    # ("PCI-Bus 0, Geraet 2, Funktion 0" on a German system). Three integers in
     # order is the invariant; the words are not. [0-9] with length bounds, not
     # \d: .NET's \d matches every Unicode digit, which then fails the cast.
     # A device above 0x1f or a function above 7 is not a PCI address at all

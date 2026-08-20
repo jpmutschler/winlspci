@@ -118,7 +118,15 @@ function New-FakeDevice {
         MaxLinkSpeed = '8GT/s'; MaxLinkSpeedRaw = 3; MaxLinkWidth = 4
         Downtrained = $false
         MaxPayloadSize = 256; MaxPayloadSizeSupported = 512; MaxReadRequestSize = 512
-        AerCapable = $false; ParentInstanceId = $null; InstanceId = 'X'; Present = $true
+        AerCapable = $false
+        DeviceType = 'PCIe Endpoint'; DeviceTypeRaw = 2; IsBridge = $false; ExpressSpecVersion = 2
+        InterruptModes = 'INTx,MSI,MSI-X'; InterruptSupportRaw = 7; InterruptVectorsMax = 33
+        MsiSupported = $true; MsixSupported = $true; SriovCapable = $false; SriovStatus = $null; SriovSupportRaw = $null
+        AcsSupport = 'missing'; AcsSupportRaw = 2; AcsCapabilityRegister = 0
+        AriCapable = $false; AtsCapable = $false; AtomicsCapable = $false; BarTypesRaw = 256; LinkSubStateRaw = 0
+        PhysicalSlot = $null; LocationPath = 'PCIROOT(0)#PCI(0600)#PCI(0000)'; SerialNumber = $null; SerialNumberRaw = $null
+        PowerState = 'D0'
+        ParentInstanceId = $null; InstanceId = 'X'; Present = $true
     }
     foreach ($k in $Override.Keys) { $d[$k] = $Override[$k] }
     return [pscustomobject]$d
@@ -268,7 +276,10 @@ It 'de-DE-location: a localised LocationInfo still yields the right slot' {
     Use-Fixture 'de-DE-location' {
         Assert-Equal '00:1c.0 01:00.0' ((@(Get-PciDevice | Sort-Object Slot) | ForEach-Object Slot) -join ' ')
     }
-    $loc = & $module { ConvertTo-Bdf 'PCI-Bus 1, Gerät 0, Funktion 0' $null $null }
+    # Built from a code point, not a literal: this file stays ASCII so PS 5.1
+    # (which reads BOM-less UTF-8 as ANSI) and PS 7 see the same string.
+    $german = 'PCI-Bus 1, Ger' + [char]0xE4 + 't 0, Funktion 0'
+    $loc = & $module { param($s) ConvertTo-Bdf $s $null $null } $german
     Assert-Equal '01:00.0' $loc.Slot
 }
 
@@ -293,6 +304,78 @@ It 'tigerlake-laptop: the recorded machine replays with link state intact' {
         Assert-Equal 4 $nvme.LinkWidth
         Assert-Equal '0600' ($devs | Where-Object Slot -eq '00:00.0').ClassCode 'host bridge class via hardware id'
     }
+}
+
+It 'tigerlake-laptop: device types, capabilities, slot, power decode from the recording' {
+    Use-Fixture 'tigerlake-laptop' {
+        $devs = @(Get-PciDevice)
+        $nvme = $devs | Where-Object Slot -eq '01:00.0'
+        Assert-Equal 'PCIe Endpoint' $nvme.DeviceType
+        Assert-Equal $false $nvme.IsBridge
+        Assert-Equal 'INTx,MSI,MSI-X' $nvme.InterruptModes
+        Assert-Equal $true $nvme.MsixSupported
+        Assert-Equal 33 $nvme.InterruptVectorsMax
+        Assert-Equal 2 $nvme.ExpressSpecVersion
+        Assert-Equal 'D0' $nvme.PowerState
+        $rp = $devs | Where-Object Slot -eq '00:1c.0'
+        Assert-Equal 'PCIe Root Port' $rp.DeviceType
+        Assert-Equal $true $rp.IsBridge
+        $wifi = $devs | Where-Object { $_.VendorId -eq '8086' -and $_.DeviceId -eq '2723' }
+        Assert-Equal 5 $wifi.PhysicalSlot 'UINumber is the chassis slot'
+        $usb = $devs | Where-Object { $_.DeviceId -eq '9a13' }
+        Assert-Equal 'D3' $usb.PowerState 'the xHCI was in D3 when recorded'
+        $hb = $devs | Where-Object Slot -eq '00:00.0'
+        Assert-Equal $null $hb.DeviceType 'host bridge reports no DeviceType: stays null'
+        Assert-Equal $null $hb.MsiSupported
+        Assert-Equal 24 @($devs | Where-Object { $null -ne $_.LocationPath }).Count 'every device has a location path'
+        # ACS: 0 present (root ports with a populated register), 2 missing
+        # (endpoints without the capability), 1 not needed (RC integrated).
+        Assert-Equal 'present'    ($devs | Where-Object Slot -eq '00:06.0').AcsSupport
+        Assert-Equal 'missing'    $nvme.AcsSupport
+        Assert-Equal 'not needed' ($devs | Where-Object Slot -eq '00:02.0').AcsSupport
+        Assert-Equal 31 ($devs | Where-Object Slot -eq '00:06.0').AcsCapabilityRegister 'present ports carry a register'
+        Assert-Equal 0  $nvme.AcsCapabilityRegister 'missing means no register'
+        # SR-IOV: only the iGPU carries the key, with status 0 = ok -> capable.
+        Assert-Equal $true ($devs | Where-Object Slot -eq '00:02.0').SriovCapable
+        Assert-Equal 'ok'  ($devs | Where-Object Slot -eq '00:02.0').SriovStatus
+        Assert-Equal $null $nvme.SriovCapable 'no key: unknown, not false'
+    }
+}
+
+It 'decodes CM_POWER_DATA, InterruptSupport and a device serial number' {
+    $m = Get-Module winlspci
+    # 56-byte blob, state at bytes 4..7 (little-endian)
+    $d3 = [byte[]](@(56,0,0,0, 4,0,0,0) + (1..48 | ForEach-Object { 0 }))
+    $d0 = [byte[]](@(56,0,0,0, 1,0,0,0) + (1..48 | ForEach-Object { 0 }))
+    Assert-Equal 'D3' (& $m { param($b) ConvertFrom-PowerData $b } $d3)
+    Assert-Equal 'D0' (& $m { param($b) ConvertFrom-PowerData $b } $d0)
+    Assert-Equal $null (& $m { ConvertFrom-PowerData @(56,0,0) }) 'short blob is null, not an exception'
+    Assert-Equal $null (& $m { ConvertFrom-PowerData $null })
+    Assert-Equal $null (& $m { ConvertFrom-PowerData @(56,0,0,0, 9,0,0,0) }) 'unknown state is null'
+    # JSON round trip hands back Int32 arrays, not byte[]; must still decode
+    Assert-Equal 'D3' (& $m { ConvertFrom-PowerData @([int]56,[int]0,[int]0,[int]0,[int]4,[int]0,[int]0,[int]0) })
+
+    Assert-Equal 'INTx,MSI,MSI-X' ((& $m { ConvertFrom-InterruptSupport 7 }) -join ',')
+    Assert-Equal 'MSI' ((& $m { ConvertFrom-InterruptSupport 2 }) -join ',')
+    $none = & $m { ConvertFrom-InterruptSupport 0 }     # a reported 0: empty list, not $null
+    Assert-True ($null -ne $none) 'reported 0 must not be null'
+    Assert-Equal 0 @($none).Count
+    Assert-Equal $null (& $m { ConvertFrom-InterruptSupport $null })
+
+    Assert-Equal '01-02-03-04-05-06-07-08' (& $m { Format-DeviceSerialNumber ([uint64]0x0102030405060708) })
+    Assert-Equal $null (& $m { Format-DeviceSerialNumber $null })
+}
+
+It 'the DeviceType map covers every bridge type and nothing renders a bare number' {
+    $m = Get-Module winlspci
+    $names = & $m { $script:DeviceTypeName }
+    $bridges = & $m { $script:BridgeDeviceTypes }
+    foreach ($b in $bridges) { Assert-True ($names.ContainsKey($b)) "bridge type $b has no name" }
+    Assert-Equal 'PCIe Root Port' $names[8]
+    Assert-Equal 'PCIe Upstream Switch Port' $names[9]
+    Assert-Equal 'PCIe Downstream Switch Port' $names[10]
+    Assert-True ($bridges -contains 8 -and $bridges -contains 9 -and $bridges -contains 10)
+    Assert-True ($bridges -notcontains 2 -and $bridges -notcontains 4) 'endpoints are not bridges'
 }
 
 It 'a fixture never leaks into the live enumeration' {
@@ -335,6 +418,32 @@ if ($devices.Count -gt 0) {
 
 It 'enumerates at least one PCI device' {
     Assert-True ($devices.Count -gt 0) 'no PCI devices found at all'
+}
+
+It 'an invalid DEVPKEY makes enumeration FAIL LOUDLY rather than list devices with empty bags' {
+    # Add a bogus key in-memory: GetDeviceProperties then throws for every
+    # device. The old behaviour was 24 devices at ??:??.? with no link state,
+    # exit 0. Now it is one "PCI enumeration failed" error.
+    $m = Get-Module winlspci
+    $saved = & $m { $script:WantedKeys }
+    try {
+        & $m { $script:WantedKeys = $script:WantedKeys + @('DEVPKEY_Bogus_DoesNotExist') }
+        Assert-Throws { Get-PciDevice } -Like 'PCI enumeration failed:*every device*' 'empty bags must not render as devices'
+    } finally {
+        & $m { param($k) $script:WantedKeys = $k } $saved
+    }
+    Assert-True (@(Get-PciDevice).Count -gt 0) 'restored key list enumerates again'
+}
+
+It 'live: the property fetch is populated -- an invalid DEVPKEY would silently empty every bag' {
+    # One rejected key name makes GetDeviceProperties throw for EVERY device,
+    # and Get-DevicePropertyBag swallows that into an empty bag: no class, no
+    # link, slot ??:??.?. Fixtures cannot catch it (their bags are pre-made);
+    # only a live call can. This is the tripwire for adding unverified keys.
+    $withClass = @($devices | Where-Object { $null -ne $_.ClassCode }).Count
+    $withSlot  = @($devices | Where-Object { $_.Slot -ne '??:??.?' }).Count
+    Assert-True ($withClass -gt 0) 'no device has a class code: the DEVPKEY fetch is failing for every device'
+    Assert-Equal $devices.Count $withSlot 'every live device must have a slot; ??:??.? means the bag was empty'
 }
 
 It 'decodes a Hyper-V bus number with the segment in its upper bits' {
@@ -596,8 +705,83 @@ It 'includes hex ids in -nn mode and not in name mode' {
 It 'flags a downtrained link in words, not just numbers' {
     $fake = New-FakeDevice @{ LinkSpeedRaw = 3; LinkWidth = 2; MaxLinkSpeed = '16GT/s'; MaxLinkSpeedRaw = 4; MaxLinkWidth = 4 }
     $out = @($fake | Format-Lspci -Verbosity 1) -join "`n"
-    Assert-True ($out -like '*DOWNTRAINED (speed)*') "speed downtrain not flagged: $out"
-    Assert-True ($out -like '*DOWNTRAINED (width)*') "width downtrain not flagged: $out"
+    Assert-True ($out -like '*DOWNTRAINED (speed, width)*') "both downtrains, one marker: $out"
+    $speedOnly = New-FakeDevice @{ LinkSpeedRaw = 3; MaxLinkSpeed = '16GT/s'; MaxLinkSpeedRaw = 4 }
+    $out = @($speedOnly | Format-Lspci -Verbosity 1) -join "`n"
+    Assert-True ($out -like '*DOWNTRAINED (speed)*' -and $out -notlike '*width*') "speed only: $out"
+}
+
+It 'explains a downtrained link by its power state, only when the state is known and not D0' {
+    $down = @{ LinkSpeedRaw = 3; LinkWidth = 2; MaxLinkSpeed = '16GT/s'; MaxLinkSpeedRaw = 4; MaxLinkWidth = 4 }
+    $d3 = New-FakeDevice ($down + @{ PowerState = 'D3' })
+    $lines = @($d3 | Format-Lspci -Verbosity 1)
+    $i = [array]::IndexOf(@($lines | ForEach-Object { $_ -like '*DOWNTRAINED*' }), $true)
+    Assert-True ($i -ge 0) "no DOWNTRAINED line: $($lines -join "`n")"
+    Assert-True ($lines[$i + 1] -like '*device is in D3*may be idle link power management*') "D3 note should follow on its own line: $($lines -join "`n")"
+    $d0 = New-FakeDevice ($down + @{ PowerState = 'D0' })
+    $out = @($d0 | Format-Lspci -Verbosity 1) -join "`n"
+    Assert-True ($out -like '*DOWNTRAINED*' -and $out -notlike '*device is in D0*') "D0 must not be offered as an explanation: $out"
+    $unknown = New-FakeDevice ($down + @{ PowerState = $null })
+    $out = @($unknown | Format-Lspci -Verbosity 1) -join "`n"
+    Assert-True ($out -notlike '*device is in*') "unknown power state must say nothing: $out"
+}
+
+It 'omits the Subsystem line for 0000:0000 rather than inventing "Vendor 0000"' {
+    $fake = New-FakeDevice @{ SubsystemVendorId = '0000'; SubsystemId = '0000' }
+    $out = @($fake | Format-Lspci -Verbosity 2) -join "`n"
+    Assert-True ($out -notlike '*Subsystem:*') "0000:0000 must not print a subsystem: $out"
+}
+
+It 'marks an all-zero device serial number as not populated' {
+    $fake = New-FakeDevice @{ SerialNumber = '00-00-00-00-00-00-00-00'; SerialNumberRaw = 0 }
+    $out = @($fake | Format-Lspci -Verbosity 2) -join "`n"
+    Assert-True ($out -like '*Device Serial Number 00-00-00-00-00-00-00-00 (capability present, not populated)*') $out
+    $real = New-FakeDevice @{ SerialNumber = '01-02-03-04-05-06-07-08'; SerialNumberRaw = 72623859790382856 }
+    $out = @($real | Format-Lspci -Verbosity 2) -join "`n"
+    Assert-True ($out -like '*01-02-03-04-05-06-07-08*' -and $out -notlike '*not populated*') $out
+}
+
+It 'renders capability presence as one line, type and physical slot, and nothing when unreported' {
+    $fake = New-FakeDevice @{ AerCapable = $true; PhysicalSlot = 4; SriovCapable = $true }
+    $out = @($fake | Format-Lspci -Verbosity 2) -join "`n"
+    Assert-True ($out -like '*Physical Slot: 4*') $out
+    Assert-True ($out -like '*Type: PCIe Endpoint (PCIe capability v2)*') $out
+    Assert-True ($out -like '*Capabilities: AER, MSI, MSI-X (33 vectors), SR-IOV*') "caps line: $out"
+    $capsLine = @($out -split "`n" | Where-Object { $_ -like '*Capabilities:*' })[0]
+    Assert-True ($capsLine -notlike '*ACS*') "ACS does not belong in the capability list: $capsLine"
+    # The fake is an ENDPOINT: "missing" is the normal case there and says
+    # nothing about isolation, so it is not printed; a bridge gets the line.
+    Assert-True ($out -notlike '*ACS:*') "endpoint with ACS missing must print no ACS line: $out"
+    $bridge = New-FakeDevice @{ IsBridge = $true; DeviceType = 'PCIe Root Port'; DeviceTypeRaw = 8; AcsSupport = 'missing'; AcsSupportRaw = 2 }
+    $out = @($bridge | Format-Lspci -Verbosity 2) -join "`n"
+    Assert-True ($out -like '*ACS: missing (Windows expected ACS*') "bridge ACS line: $out"
+    $present = New-FakeDevice @{ AcsSupport = 'present'; AcsSupportRaw = 0; AcsCapabilityRegister = 31 }
+    $out = @($present | Format-Lspci -Verbosity 2) -join "`n"
+    Assert-True ($out -like '*ACS: present*') "endpoint with ACS present is worth saying: $out"
+    Assert-True ($out -like '*Power: D0*') $out
+    $none = New-FakeDevice @{ AerCapable = $false; MsiSupported = $false; MsixSupported = $false; SriovCapable = $false
+        AriCapable = $false; AtsCapable = $false; AtomicsCapable = $false; AcsSupport = $null }
+    $out = @($none | Format-Lspci -Verbosity 2) -join "`n"
+    Assert-True ($out -like '*Capabilities: none reported*') "all-false must say none reported: $out"
+    Assert-True ($out -notlike '*ACS:*') 'null AcsSupport prints no ACS line'
+    $absent = New-FakeDevice @{ AerCapable = $null; MsiSupported = $null; MsixSupported = $null; SriovCapable = $null
+        AriCapable = $null; AtsCapable = $null; AtomicsCapable = $null; AcsSupport = $null; DeviceType = $null
+        PhysicalSlot = $null; PowerState = $null; LocationPath = $null }
+    $out = @($absent | Format-Lspci -Verbosity 2) -join "`n"
+    Assert-True ($out -notlike '*Capabilities:*' -and $out -notlike '*Type:*' -and $out -notlike '*Power:*') "absent must print nothing: $out"
+}
+
+It 'the tree tags bridges by type and leaves endpoints untagged' {
+    $rp = New-FakeDevice @{ Slot = '00:1c.0'; InstanceId = 'RP'; DeviceType = 'PCIe Root Port'; DeviceTypeRaw = 8; IsBridge = $true; LinkStateReported = $false }
+    $us = New-FakeDevice @{ Slot = '01:00.0'; InstanceId = 'US'; ParentInstanceId = 'RP'; DeviceType = 'PCIe Upstream Switch Port'; DeviceTypeRaw = 9; IsBridge = $true }
+    $ds = New-FakeDevice @{ Slot = '02:00.0'; InstanceId = 'DS'; ParentInstanceId = 'US'; DeviceType = 'PCIe Downstream Switch Port'; DeviceTypeRaw = 10; IsBridge = $true }
+    $ep = New-FakeDevice @{ Slot = '03:00.0'; InstanceId = 'EP'; ParentInstanceId = 'DS' }
+    $lines = @(Format-PciTree -Devices @($rp, $us, $ds, $ep))
+    Assert-Equal 4 $lines.Count
+    Assert-True ($lines[0] -like '*[[]root port]*') $lines[0]
+    Assert-True ($lines[1] -like '*[[]upstream port]*') $lines[1]
+    Assert-True ($lines[2] -like '*[[]downstream port]*') $lines[2]
+    Assert-True ($lines[3] -notlike '*[[]*port]*') "endpoint must not be tagged: $($lines[3])"
 }
 
 It 'does NOT flag a downtrained width when the width is simply not reported' {
@@ -656,6 +840,18 @@ It 'folds terminal escape sequences in names before they reach the console' {
     $out = @($fake | Format-Lspci -Verbosity 0) -join "`n"
     Assert-True ($out -notmatch '[\x00-\x1f\x7f]') "control characters leaked: $out"
     Assert-True ($out -like '*spoofed*') 'the printable text must survive'
+}
+
+It 'sanitises every verbosity, including the -vvv dump, Location and Physical Slot' {
+    $esc = [char]27
+    $fake = New-FakeDevice @{
+        FriendlyName = "FRIENDLY${esc}[31mNAME"; DeviceName = $null
+        LocationPath = "PCIROOT(0)#PCI(1D00)${esc}[2K${esc}[1GEVIL`rX"; PhysicalSlot = "3${esc}[31m"
+    }
+    foreach ($v in 1, 2, 3) {
+        $out = @($fake | Format-Lspci -Verbosity $v) -join "`n"
+        Assert-True ($out -notmatch '[\x00-\x08\x0b-\x1f\x7f]') "control characters leaked at -v$v"
+    }
 }
 
 It 'formats a trimmed object (Select-Object) with gaps rather than crashing under StrictMode' {

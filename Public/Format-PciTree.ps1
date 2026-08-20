@@ -68,6 +68,13 @@ function Format-PciTree {
             if ($Numeric -eq 2) { $desc = "$desc [$ids]" }
             $label += "  $desc"
         }
+        # Bridges get a short type tag: the topology reads very differently
+        # once a root port, an upstream and a downstream switch port are told
+        # apart. Endpoints are the default and stay unlabelled.
+        if (Get-Field $Node 'IsBridge') {
+            $t = "$(Get-Field $Node 'DeviceType')" -replace '^PCIe ', '' -replace ' Switch Port$', ' port' -replace ' Port$', ' port'
+            if ($t) { $label += "  [$($t.ToLower())]" }
+        }
         if (Get-Field $Node 'LinkStateReported') {
             $w = Get-Field $Node 'LinkWidth'
             $wText = 'x?'
